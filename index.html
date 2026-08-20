@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Buddha's Comic Library</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- Launch splash -->
+  <div class="launch-screen" id="launch-screen">
+    <div class="launch-content">
+      <div class="launch-burst-wrap">
+        <svg class="launch-burst" id="launch-burst" viewBox="0 0 200 200"></svg>
+        <svg class="launch-book" id="launch-book" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 21.5c-1.6-1.1-3.7-1.7-5.8-1.7-1.3 0-2.6.2-3.7.7-.3.1-.5 0-.5-.3V4.9c0-.2.1-.3.2-.4C3.5 3.9 5 3.5 6.5 3.5c2 0 3.9.6 5.5 1.8V21.5zm0 0c1.6-1.1 3.7-1.7 5.8-1.7 1.3 0 2.6.2 3.7.7.3.1.5 0 .5-.3V4.9c0-.2-.1-.3-.2-.4-1.3-.6-2.8-1-4.3-1-2 0-3.9.6-5.5 1.8V21.5z"/>
+        </svg>
+      </div>
+      <div class="launch-title" id="launch-title">BUDDHA'S<br />COMIC LIBRARY</div>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <!-- Nav bar -->
+    <div class="nav-bar">
+      <div class="nav-title">
+        <svg viewBox="0 0 200 200" id="nav-burst" fill="currentColor"></svg>
+        LIBRARY
+      </div>
+      <div class="nav-actions">
+        <button class="icon-button" id="btn-menu" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search comics" autocomplete="off" />
+    </div>
+
+    <!-- Main content -->
+    <div id="main-content"></div>
+  </div>
+
+  <!-- Reader (full-screen overlay) -->
+  <div class="reader-view" id="reader-view" style="display:none;"></div>
+
+  <!-- Info card overlay -->
+  <div class="overlay-backdrop" id="info-backdrop"></div>
+
+  <!-- Settings sheet -->
+  <div class="sheet-backdrop" id="settings-backdrop"></div>
+  <div class="sheet" id="settings-sheet"></div>
+
+  <!-- History sheet -->
+  <div class="sheet-backdrop" id="history-backdrop"></div>
+  <div class="sheet" id="history-sheet"></div>
+
+  <!-- Manage Images sheet -->
+  <div class="sheet-backdrop" id="images-backdrop"></div>
+  <div class="sheet" id="images-sheet"></div>
+
+
+  <!-- Dropdown menu -->
+  <div class="sheet-backdrop" id="menu-backdrop"></div>
+
+  <script src="js/minizip.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/imagestore.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
