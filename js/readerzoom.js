@@ -172,4 +172,31 @@ function enableReaderPageZoom(imgEl) {
   // Exposed so the reader can reset zoom when the user navigates
   // away from this page (e.g. swipes to the next one).
   imgEl._resetReaderZoom = resetZoom;
+
+  // Exposed for explicit +/- zoom buttons, as an alternative to
+  // pinch/double-tap for anyone who prefers tapping a button.
+  // Zooms toward the center of the image rather than a fixed corner,
+  // so it feels natural regardless of how the image is scrolled.
+  imgEl._stepReaderZoom = (delta) => {
+    const rect = imgEl.getBoundingClientRect();
+    const parent = imgEl.parentElement.getBoundingClientRect();
+    const centerX = parent.width / 2;
+    const centerY = parent.height / 2;
+
+    const oldScale = scale;
+    scale = Math.max(1, Math.min(MAX_ZOOM, scale + delta));
+    const scaleRatio = scale / oldScale;
+
+    // Adjust translation so the center point of the visible area
+    // stays roughly fixed as scale changes, instead of the image
+    // jumping to its top-left corner on every button tap.
+    translateX = centerX - (centerX - translateX) * scaleRatio;
+    translateY = centerY - (centerY - translateY) * scaleRatio;
+
+    if (scale <= 1) {
+      resetZoom();
+    } else {
+      clampAndApply();
+    }
+  };
 }

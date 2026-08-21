@@ -367,6 +367,8 @@ function openReader(comicId) {
       <button class="icon-button pressable" id="reader-close">${ICONS.chevronLeft}</button>
       <div class="reader-nav-title">${escapeHTML(comic.title)}</div>
       <div class="reader-nav-actions">
+        <button class="icon-button pressable" id="reader-zoom-out">${ICONS.zoomOut}</button>
+        <button class="icon-button pressable" id="reader-zoom-in">${ICONS.zoomIn}</button>
         <button class="icon-button pressable" id="reader-info">${ICONS.info}</button>
         <button class="icon-button pressable" id="reader-fav">${ProgressStore.isFavorite(comicId) ? ICONS.star : ICONS.starOutline}</button>
       </div>
@@ -422,6 +424,17 @@ function openReader(comicId) {
     e.currentTarget.innerHTML = ProgressStore.isFavorite(comicId) ? ICONS.star : ICONS.starOutline;
   });
   document.getElementById("reader-info").addEventListener("click", () => showInfoCard(comic));
+
+  const zoomStep = 0.75;
+  function currentPageImage() {
+    return stage.children[currentReaderPage]?.querySelector(".reader-page-img");
+  }
+  document.getElementById("reader-zoom-in").addEventListener("click", () => {
+    currentPageImage()?._stepReaderZoom?.(zoomStep);
+  });
+  document.getElementById("reader-zoom-out").addEventListener("click", () => {
+    currentPageImage()?._stepReaderZoom?.(-zoomStep);
+  });
 }
 
 function closeReader() {
