@@ -378,8 +378,14 @@ function openReader(comicId) {
         ${pages
           .map((p) => {
             const src = resolvedPageImages && resolvedPageImages[p];
+            // data-src, not src — the actual image isn't loaded until
+            // loadNearbyPageImages() assigns it, once this page is
+            // close enough to the one being viewed. Loading every
+            // page's full image up front (the old behavior) is what
+            // was crashing on phones and slowing page turns down for
+            // longer comics.
             const content = src
-              ? `<img class="reader-page-img" src="${src}" alt="Page ${p + 1}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'reader-page-content',textContent:'Page ${p + 1} (image not found)'}))">`
+              ? `<img class="reader-page-img" data-src="${src}" alt="Page ${p + 1}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'reader-page-content',textContent:'Page ${p + 1} (image not found)'}))">`
               : `<div class="reader-page-content">Page ${p + 1}</div>`;
             return `<div class="reader-page">${content}</div>`;
           })
@@ -393,13 +399,32 @@ function openReader(comicId) {
   view.style.display = "flex";
   document.body.style.overflow = "hidden";
 
+  // Loads real image data only for the page currently being viewed,
+  // plus one page ahead and behind (so the very next swipe/click
+  // already has its image ready, without paying the cost for every
+  // page in the whole comic up front). Already-loaded pages are
+  // left alone — this only ever adds src, never removes it, so nothing
+  // has to reload as you move back and forth within the same area.
+  function loadNearbyPageImages(centerPage) {
+    const pageEls = stage.querySelectorAll(".reader-page");
+    for (let i = Math.max(0, centerPage - 1); i <= Math.min(pages.length - 1, centerPage + 1); i++) {
+      const img = pageEls[i]?.querySelector(".reader-page-img[data-src]");
+      if (img) {
+        img.src = img.dataset.src;
+        img.removeAttribute("data-src");
+      }
+    }
+  }
+
+  const stage = document.getElementById("reader-stage");
+  loadNearbyPageImages(currentReaderPage);
+
   document.querySelectorAll(".reader-page-img").forEach((img) => {
     // Images may still be loading; either way this is safe to call
     // immediately since it just wires up event listeners.
     enableReaderPageZoom(img);
   });
 
-  const stage = document.getElementById("reader-stage");
   const track = document.getElementById("reader-track");
   const arrowLeft = document.getElementById("reader-arrow-left");
   const arrowRight = document.getElementById("reader-arrow-right");
@@ -420,6 +445,16 @@ function openReader(comicId) {
     document.getElementById("reader-counter").textContent = `PAGE ${newPage + 1} OF ${comic.pageCount}`;
     pagingController.goToPage(newPage, true);
     updateArrowStates();
+
+    loadNearbyPageImages(newPage);
+    // Any image that just got its real src assigned for the first
+    // time needs zoom wired up too — already-set-up images are
+    // simply skipped since enableReaderPageZoom is idempotent-safe
+    // to call again, but to keep it cheap we only do this for pages
+    // that could plausibly be new.
+    stage.querySelectorAll(".reader-page-img").forEach((img) => {
+      if (!img._resetReaderZoom) enableReaderPageZoom(img);
+    });
   }
 
   const pagingController = setupReaderPaging(stage, track, comic.pageCount, {
@@ -467,9 +502,20 @@ function openReader(comicId) {
     }
   });
 
-  // Desktop: show controls as soon as the mouse moves anywhere over
-  // the reader, so hovering near the edges reveals the arrows.
-  view.addEventListener("mousemove", showReaderControls);
+  // Desktop: show controls when the mouse moves over the reader, so
+  // hovering near the edges reveals the arrows. Throttled — mousemove
+  // fires very frequently (often 60+ times/second), and re-running
+  // the show/hide-timer logic on every single one of those adds up
+  // to real, noticeable jank for no benefit, since visually nothing
+  // needs to update that often.
+  let lastMouseMoveShow = 0;
+  view.addEventListener("mousemove", () => {
+    const now = Date.now();
+    if (now - lastMouseMoveShow > 200) {
+      lastMouseMoveShow = now;
+      showReaderControls();
+    }
+  });
   view.addEventListener("mouseleave", () => {
     clearTimeout(hideControlsTimeout);
     view.classList.remove("controls-visible");
