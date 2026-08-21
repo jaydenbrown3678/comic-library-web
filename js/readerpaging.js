@@ -66,13 +66,16 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     currentX = startX;
     stageWidth = stage.clientWidth;
     track.style.transition = "none";
-    try {
-      stage.setPointerCapture(e.pointerId);
-    } catch {
-      // Safe to ignore — dragging still works without capture, it
-      // just won't continue tracking if the pointer leaves the
-      // element bounds mid-drag in rare cases.
-    }
+    // Deliberately NOT calling setPointerCapture here — capturing the
+    // very first finger to touch down would redirect its future move
+    // events away from the image entirely, which breaks two-finger
+    // pinch-zoom the moment a second finger lands (only that second
+    // finger's movement would ever reach the zoom code, so the
+    // distance-between-fingers calculation it depends on never
+    // updates correctly). Without capture, a fast swipe that drifts
+    // outside the stage bounds mid-drag could stop being tracked —
+    // an acceptable tradeoff, since the reader fills nearly the
+    // whole screen anyway.
   });
 
   stage.addEventListener("pointermove", (e) => {
