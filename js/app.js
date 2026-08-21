@@ -435,16 +435,30 @@ function openReader(comicId) {
   }
 
   function goToPage(newPage) {
-    // Reset zoom on the page being left, so it's back to normal
-    // size next time it's viewed instead of staying zoomed in.
     const previousImg = stage.querySelectorAll(".reader-page")[currentReaderPage]?.querySelector(".reader-page-img");
-    previousImg?._resetReaderZoom?.();
+    const leavingPageIndex = currentReaderPage;
 
     currentReaderPage = newPage;
     ProgressStore.updateLastPage(comicId, newPage);
     document.getElementById("reader-counter").textContent = `PAGE ${newPage + 1} OF ${comic.pageCount}`;
     pagingController.goToPage(newPage, true);
     updateArrowStates();
+
+    // Reset zoom on the page being left, so it's back to normal size
+    // next time it's viewed — but not until AFTER it's actually
+    // slid off-screen (matching the paging transition's duration).
+    // Resetting it immediately, before the slide animation plays,
+    // caused a jarring instant snap from zoomed-in back to normal
+    // size while the page was still fully visible — looked like the
+    // whole reader had glitched or reloaded.
+    setTimeout(() => {
+      // If a quick back-and-forth navigation means the user is once
+      // again looking at this same page, leave its zoom alone rather
+      // than resetting a page they're actively viewing.
+      if (currentReaderPage !== leavingPageIndex) {
+        previousImg?._resetReaderZoom?.();
+      }
+    }, 300);
 
     loadNearbyPageImages(newPage);
     // Any image that just got its real src assigned for the first

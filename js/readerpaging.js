@@ -47,13 +47,38 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
 
   const activePointerIds = new Set();
 
+  // Tracks the track's current effective X position at all times —
+  // updated both during raw drag (scheduleTrackUpdate) and after
+  // committing to an animated position (setTrackX) — so the next
+  // transition's duration can be scaled to however far there
+  // actually is left to travel, rather than always taking the same
+  // fixed time whether that's 5px or a full page width.
+  let currentAppliedX = 0;
+
   function pageOffsetPx(page) {
     return -page * stageWidth;
   }
 
   function setTrackX(x, animate) {
-    track.style.transition = animate ? "transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1)" : "none";
+    if (animate) {
+      const distance = Math.abs(x - currentAppliedX);
+      const distanceFraction = stageWidth > 0 ? distance / stageWidth : 1;
+      // Scales between a snappy 0.16s (finishing a drag that's
+      // already most of the way there) and a fuller 0.32s (a
+      // complete page-width swing, e.g. from an arrow-button click
+      // with no prior drag) — so the perceived speed of the motion
+      // stays consistent instead of the same fixed time feeling
+      // rushed for long trips and sluggish for short ones.
+      const duration = Math.min(0.32, Math.max(0.16, distanceFraction * 0.32));
+      // Material Design's "standard" easing — accelerates smoothly
+      // then decelerates into place, reads as more natural than a
+      // curve that's front-loaded or has an abrupt stop.
+      track.style.transition = `transform ${duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+    } else {
+      track.style.transition = "none";
+    }
     track.style.transform = `translateX(${x}px)`;
+    currentAppliedX = x;
   }
 
   function isCurrentImageZoomed() {
@@ -83,6 +108,7 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     rafId = requestAnimationFrame(() => {
       track.style.transition = "none";
       track.style.transform = `translateX(${x}px)`;
+      currentAppliedX = x;
       rafId = null;
     });
   }
