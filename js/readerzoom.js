@@ -173,6 +173,11 @@ function enableReaderPageZoom(imgEl) {
   // away from this page (e.g. swipes to the next one).
   imgEl._resetReaderZoom = resetZoom;
 
+  // Exposed so the page-turn drag system knows to let this image's
+  // own pan handling take over instead of turning the page, while
+  // zoomed in.
+  imgEl._isReaderZoomed = () => scale > 1;
+
   // Exposed for explicit +/- zoom buttons, as an alternative to
   // pinch/double-tap for anyone who prefers tapping a button.
   // Zooms toward the center of the image rather than a fixed corner,

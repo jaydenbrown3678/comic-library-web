@@ -374,17 +374,21 @@ function openReader(comicId) {
       </div>
     </div>
     <div class="reader-page-stage" id="reader-stage">
-      ${pages
-        .map((p) => {
-          const src = resolvedPageImages && resolvedPageImages[p];
-          const content = src
-            ? `<img class="reader-page-img" src="${src}" alt="Page ${p + 1}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'reader-page-content',textContent:'Page ${p + 1} (image not found)'}))">`
-            : `<div class="reader-page-content">Page ${p + 1}</div>`;
-          return `<div class="reader-page">${content}</div>`;
-        })
-        .join("")}
+      <div class="reader-track" id="reader-track">
+        ${pages
+          .map((p) => {
+            const src = resolvedPageImages && resolvedPageImages[p];
+            const content = src
+              ? `<img class="reader-page-img" src="${src}" alt="Page ${p + 1}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'reader-page-content',textContent:'Page ${p + 1} (image not found)'}))">`
+              : `<div class="reader-page-content">Page ${p + 1}</div>`;
+            return `<div class="reader-page">${content}</div>`;
+          })
+          .join("")}
+      </div>
     </div>
     <div class="reader-counter" id="reader-counter">PAGE ${currentReaderPage + 1} OF ${comic.pageCount}</div>
+    <button class="reader-arrow reader-arrow-left" id="reader-arrow-left" aria-label="Previous page">${ICONS.chevronLeft}</button>
+    <button class="reader-arrow reader-arrow-right" id="reader-arrow-right" aria-label="Next page">${ICONS.chevronRight}</button>
   `;
   view.style.display = "flex";
   document.body.style.overflow = "hidden";
@@ -396,26 +400,79 @@ function openReader(comicId) {
   });
 
   const stage = document.getElementById("reader-stage");
-  requestAnimationFrame(() => {
-    stage.scrollLeft = currentReaderPage * stage.clientWidth;
+  const track = document.getElementById("reader-track");
+  const arrowLeft = document.getElementById("reader-arrow-left");
+  const arrowRight = document.getElementById("reader-arrow-right");
+
+  function updateArrowStates() {
+    arrowLeft.classList.toggle("reader-arrow-disabled", currentReaderPage === 0);
+    arrowRight.classList.toggle("reader-arrow-disabled", currentReaderPage === comic.pageCount - 1);
+  }
+
+  function goToPage(newPage) {
+    // Reset zoom on the page being left, so it's back to normal
+    // size next time it's viewed instead of staying zoomed in.
+    const previousImg = stage.querySelectorAll(".reader-page")[currentReaderPage]?.querySelector(".reader-page-img");
+    previousImg?._resetReaderZoom?.();
+
+    currentReaderPage = newPage;
+    ProgressStore.updateLastPage(comicId, newPage);
+    document.getElementById("reader-counter").textContent = `PAGE ${newPage + 1} OF ${comic.pageCount}`;
+    pagingController.goToPage(newPage, true);
+    updateArrowStates();
+  }
+
+  const pagingController = setupReaderPaging(stage, track, comic.pageCount, {
+    getCurrentPage: () => currentReaderPage,
+    onPageChange: goToPage,
+  });
+  pagingController.goToPage(currentReaderPage, false);
+  updateArrowStates();
+
+  arrowLeft.addEventListener("click", () => {
+    if (currentReaderPage > 0) goToPage(currentReaderPage - 1);
+  });
+  arrowRight.addEventListener("click", () => {
+    if (currentReaderPage < comic.pageCount - 1) goToPage(currentReaderPage + 1);
   });
 
-  let scrollTimeout;
-  stage.addEventListener("scroll", () => {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-      const page = Math.round(stage.scrollLeft / stage.clientWidth);
-      if (page !== currentReaderPage) {
-        // Reset zoom on the page being left, so it's back to normal
-        // size next time it's viewed instead of staying zoomed in.
-        const previousImg = stage.children[currentReaderPage]?.querySelector(".reader-page-img");
-        previousImg?._resetReaderZoom?.();
+  // Show the arrows + page counter briefly on tap or mouse movement,
+  // then fade them back out automatically so they never sit on top
+  // of the artwork while just reading.
+  let hideControlsTimeout;
+  function showReaderControls() {
+    view.classList.add("controls-visible");
+    clearTimeout(hideControlsTimeout);
+    hideControlsTimeout = setTimeout(() => view.classList.remove("controls-visible"), 2200);
+  }
 
-        currentReaderPage = page;
-        ProgressStore.updateLastPage(comicId, page);
-        document.getElementById("reader-counter").textContent = `PAGE ${page + 1} OF ${comic.pageCount}`;
-      }
-    }, 80);
+  // Tap detection: a real page-turn drag moves the pointer well past
+  // a few pixels, so a small, quick pointerdown→pointerup counts as
+  // a tap rather than a swipe — tracked independently of the paging
+  // system so the two don't interfere with each other.
+  let tapStartX = 0;
+  let tapStartY = 0;
+  let tapStartTime = 0;
+  stage.addEventListener("pointerdown", (e) => {
+    tapStartX = e.clientX;
+    tapStartY = e.clientY;
+    tapStartTime = Date.now();
+  });
+  stage.addEventListener("pointerup", (e) => {
+    const movedX = Math.abs(e.clientX - tapStartX);
+    const movedY = Math.abs(e.clientY - tapStartY);
+    const elapsed = Date.now() - tapStartTime;
+    if (movedX < 12 && movedY < 12 && elapsed < 300) {
+      showReaderControls();
+    }
+  });
+
+  // Desktop: show controls as soon as the mouse moves anywhere over
+  // the reader, so hovering near the edges reveals the arrows.
+  view.addEventListener("mousemove", showReaderControls);
+  view.addEventListener("mouseleave", () => {
+    clearTimeout(hideControlsTimeout);
+    view.classList.remove("controls-visible");
   });
 
   document.getElementById("reader-close").addEventListener("click", () => (window.location.hash = "#/"));
@@ -427,7 +484,7 @@ function openReader(comicId) {
 
   const zoomStep = 0.75;
   function currentPageImage() {
-    return stage.children[currentReaderPage]?.querySelector(".reader-page-img");
+    return stage.querySelectorAll(".reader-page")[currentReaderPage]?.querySelector(".reader-page-img");
   }
   document.getElementById("reader-zoom-in").addEventListener("click", () => {
     currentPageImage()?._stepReaderZoom?.(zoomStep);

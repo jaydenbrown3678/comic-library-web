@@ -420,14 +420,20 @@ a {
 
 .reader-page-stage {
   flex: 1;
-  overflow-x: auto;
+  overflow: hidden;
+  position: relative;
+  touch-action: none; /* dragging is fully handled by readerpaging.js */
+}
+
+.reader-track {
   display: flex;
-  scroll-snap-type: x mandatory;
+  height: 100%;
+  will-change: transform;
 }
 
 .reader-page {
   flex: 0 0 100%;
-  scroll-snap-align: start;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -468,6 +474,53 @@ a {
   font-size: 11px;
   letter-spacing: 1px;
   font-weight: 700;
+}
+
+/* ---------- Reader page-turn arrows ---------- */
+/* Hidden by default so they never sit on top of the artwork —
+   fade in on tap (mobile) or mouse movement (desktop), fade back
+   out automatically a couple seconds later. Controlled by toggling
+   .controls-visible on #reader-view (see app.js). */
+
+.reader-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 15;
+}
+
+.reader-arrow svg {
+  width: 24px;
+  height: 24px;
+}
+
+.reader-arrow.reader-arrow-left {
+  left: 10px;
+}
+
+.reader-arrow.reader-arrow-right {
+  right: 10px;
+}
+
+.reader-view.controls-visible .reader-arrow:not(.reader-arrow-disabled) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reader-arrow-disabled {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* ---------- Info card overlay ---------- */
