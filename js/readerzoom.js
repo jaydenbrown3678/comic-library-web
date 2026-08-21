@@ -36,6 +36,37 @@ function enableReaderPageZoom(imgEl) {
   imgEl.style.transformOrigin = "0 0";
   imgEl.style.willChange = "transform";
 
+  // The image's unscaled on-screen position and size (i.e. as it
+  // sits before any zoom transform is applied), captured once. Used
+  // for all clamping and pinch-anchor math below — deliberately NOT
+  // re-measured via getBoundingClientRect() mid-gesture, both because
+  // a live measurement lags a step behind whenever scale has just
+  // changed in JS but not yet repainted, and because computing
+  // everything from one fixed reference point avoids compounding
+  // small errors across many rapid pinch pointermove events.
+  let baseWidth = 0;
+  let baseHeight = 0;
+  let staticLeft = 0;
+  let staticTop = 0;
+  function captureBaseGeometry() {
+    const rect = imgEl.getBoundingClientRect();
+    if (rect.width > 0) {
+      baseWidth = rect.width;
+      baseHeight = rect.height;
+      // translate(tx,ty) scale(s) with transform-origin 0 0 always
+      // places the element's top-left corner at exactly
+      // (staticLeft + tx, staticTop + ty) on screen, regardless of
+      // scale — so this holds even if called while already zoomed.
+      staticLeft = rect.left - translateX;
+      staticTop = rect.top - translateY;
+    }
+  }
+  if (imgEl.complete) {
+    captureBaseGeometry();
+  } else {
+    imgEl.addEventListener("load", captureBaseGeometry, { once: true });
+  }
+
   function updateTouchAction() {
     // Only take over touch handling entirely once actually zoomed in
     // — at 1x, native touch scrolling needs to reach the page-turn
@@ -52,10 +83,10 @@ function enableReaderPageZoom(imgEl) {
     // Keep the image from being dragged entirely off-screen once
     // zoomed — clamps translation so at least part of the image
     // stays visible within its container.
-    const rect = imgEl.getBoundingClientRect();
+    if (baseWidth === 0) captureBaseGeometry(); // fallback if load hadn't fired yet
     const parent = imgEl.parentElement.getBoundingClientRect();
-    const scaledWidth = rect.width;
-    const scaledHeight = rect.height;
+    const scaledWidth = baseWidth * scale;
+    const scaledHeight = baseHeight * scale;
 
     const minX = Math.min(0, parent.width - scaledWidth);
     const minY = Math.min(0, parent.height - scaledHeight);
@@ -99,6 +130,12 @@ function enableReaderPageZoom(imgEl) {
         translateX,
         translateY,
       };
+      // The content-space point currently under the pinch midpoint —
+      // computed once, here, and used every frame for the rest of
+      // this gesture to keep that same point anchored under the
+      // fingers as scale changes.
+      gestureStart.contentX = (gestureStart.midpoint.x - staticLeft - translateX) / scale;
+      gestureStart.contentY = (gestureStart.midpoint.y - staticTop - translateY) / scale;
     } else if (pointers.size === 1 && scale > 1) {
       // Only start a pan if already zoomed in — at 1x, a
       // single-finger touch is left alone so the page-swipe
@@ -117,7 +154,16 @@ function enableReaderPageZoom(imgEl) {
       const [p1, p2] = Array.from(pointers.values());
       const newDistance = distanceBetween(p1, p2);
       const ratio = newDistance / gestureStart.distance;
-      scale = Math.max(1, Math.min(MAX_ZOOM, gestureStart.scale * ratio));
+      const newScale = Math.max(1, Math.min(MAX_ZOOM, gestureStart.scale * ratio));
+
+      // Recomputed fresh from the fixed anchor point captured at
+      // gesture start, rather than incrementally adjusted frame by
+      // frame — avoids compounding small errors across the many
+      // pointermove events a pinch fires, and matches the same
+      // (already correct) approach double-tap zoom uses below.
+      scale = newScale;
+      translateX = gestureStart.midpoint.x - staticLeft - gestureStart.contentX * newScale;
+      translateY = gestureStart.midpoint.y - staticTop - gestureStart.contentY * newScale;
       clampAndApply();
     } else if (pointers.size === 1 && scale > 1 && gestureStart) {
       e.preventDefault();

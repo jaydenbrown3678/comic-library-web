@@ -5,26 +5,46 @@
 // over this at all). Backward (swipe right, previous page) requires
 // noticeably more drag distance than forward, per request — it was
 // triggering too easily with just a small movement.
+//
+// Also smooths the interaction three ways:
+// 1. Velocity-based flicks — a fast short swipe commits a page turn
+//    even if it didn't travel the full distance threshold, matching
+//    how native paging apps feel (distance alone feels sluggish for
+//    quick flicks).
+// 2. requestAnimationFrame batching — transform updates during drag
+//    are batched to the browser's paint cycle instead of applied
+//    synchronously on every single pointer event, avoiding jank.
+// 3. Edge resistance — dragging past the first/last page moves the
+//    track at a fraction of your actual finger movement, so hitting
+//    the boundary feels like resistance instead of either doing
+//    nothing or moving too far.
 // ==========================================================
 
-// How far (as a fraction of screen width) you need to drag before
-// the page actually turns. Below this, it snaps back to where you
-// were. Tune these two independently to adjust each direction's feel.
 const FORWARD_THRESHOLD = 0.22; // swipe left → next page
 const BACKWARD_THRESHOLD = 0.45; // swipe right → previous page (needs more room)
+
+// A flick faster than this (pixels/ms) commits a page turn
+// regardless of distance travelled, as long as it's pointed the
+// right direction and isn't already past the first/last page.
+const FLICK_VELOCITY_THRESHOLD = 0.5; // ~500px/second
+
+// How much a drag past the first/last page is dampened, so it feels
+// like resistance rather than free movement into invalid territory.
+const EDGE_RESISTANCE = 0.35;
 
 function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChange }) {
   let dragging = false;
   let startX = 0;
   let currentX = 0;
   let stageWidth = stage.clientWidth;
+  let rafId = null;
 
-  // Tracks how many pointers are currently touching the stage at
-  // all (bubbled up from the image too), so a second finger landing
-  // — which means a pinch is starting, handled entirely by the
-  // per-image zoom system instead — can immediately cancel any
-  // in-progress page-turn drag rather than letting the two systems
-  // fight over the same touch.
+  // Small rolling history of recent {time, x} samples, used to
+  // compute the finger's actual velocity at release — a straight
+  // start-to-end average would misrepresent a drag that started
+  // slow and sped up (or vice versa) partway through.
+  let recentSamples = [];
+
   const activePointerIds = new Set();
 
   function pageOffsetPx(page) {
@@ -32,13 +52,10 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
   }
 
   function setTrackX(x, animate) {
-    track.style.transition = animate ? "transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)" : "none";
+    track.style.transition = animate ? "transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1)" : "none";
     track.style.transform = `translateX(${x}px)`;
   }
 
-  // While the current page's image is zoomed in, dragging should pan
-  // the image instead of turning the page — so paging is disabled
-  // for the duration of that zoom.
   function isCurrentImageZoomed() {
     const currentPageEl = stage.querySelectorAll(".reader-page")[getCurrentPage()];
     const img = currentPageEl?.querySelector(".reader-page-img");
@@ -50,12 +67,30 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     setTrackX(pageOffsetPx(getCurrentPage()), true);
   }
 
+  // Applies resistance once dragging past a boundary the reader
+  // can't actually go beyond (before page 0, or past the last page),
+  // instead of moving 1:1 with the finger into invalid territory.
+  function withEdgeResistance(rawDelta, current) {
+    const atFirstPage = current === 0;
+    const atLastPage = current === pageCount - 1;
+    if (atFirstPage && rawDelta > 0) return rawDelta * EDGE_RESISTANCE;
+    if (atLastPage && rawDelta < 0) return rawDelta * EDGE_RESISTANCE;
+    return rawDelta;
+  }
+
+  function scheduleTrackUpdate(x) {
+    if (rafId !== null) return; // a frame is already pending, let it pick up the latest x
+    rafId = requestAnimationFrame(() => {
+      track.style.transition = "none";
+      track.style.transform = `translateX(${x}px)`;
+      rafId = null;
+    });
+  }
+
   stage.addEventListener("pointerdown", (e) => {
     activePointerIds.add(e.pointerId);
 
     if (activePointerIds.size >= 2) {
-      // A second finger just landed — this is a pinch, not a page
-      // turn. Hand off entirely to the image's own zoom handling.
       cancelDragBackToCurrentPage();
       return;
     }
@@ -65,42 +100,61 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     startX = e.clientX;
     currentX = startX;
     stageWidth = stage.clientWidth;
+    recentSamples = [{ time: performance.now(), x: e.clientX }];
     track.style.transition = "none";
-    // Deliberately NOT calling setPointerCapture here — capturing the
-    // very first finger to touch down would redirect its future move
-    // events away from the image entirely, which breaks two-finger
-    // pinch-zoom the moment a second finger lands (only that second
-    // finger's movement would ever reach the zoom code, so the
-    // distance-between-fingers calculation it depends on never
-    // updates correctly). Without capture, a fast swipe that drifts
-    // outside the stage bounds mid-drag could stop being tracked —
-    // an acceptable tradeoff, since the reader fills nearly the
-    // whole screen anyway.
   });
 
   stage.addEventListener("pointermove", (e) => {
     if (!dragging || activePointerIds.size >= 2) return;
     currentX = e.clientX;
-    const dragDelta = currentX - startX;
-    setTrackX(pageOffsetPx(getCurrentPage()) + dragDelta, false);
+
+    const now = performance.now();
+    recentSamples.push({ time: now, x: currentX });
+    // Only need a short window of history for a meaningful velocity
+    // reading — trim anything older than ~120ms.
+    while (recentSamples.length > 2 && now - recentSamples[0].time > 120) {
+      recentSamples.shift();
+    }
+
+    const rawDelta = currentX - startX;
+    const current = getCurrentPage();
+    const dragDelta = withEdgeResistance(rawDelta, current);
+    scheduleTrackUpdate(pageOffsetPx(current) + dragDelta);
   });
+
+  function currentVelocity() {
+    if (recentSamples.length < 2) return 0;
+    const first = recentSamples[0];
+    const last = recentSamples[recentSamples.length - 1];
+    const dt = last.time - first.time;
+    if (dt <= 0) return 0;
+    return (last.x - first.x) / dt; // px per ms, sign indicates direction
+  }
 
   function endDrag(e) {
     activePointerIds.delete(e.pointerId);
     if (!dragging) return;
     dragging = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
 
     const dragDelta = currentX - startX;
     const ratio = dragDelta / stageWidth;
+    const velocity = currentVelocity();
     const current = getCurrentPage();
 
-    if (ratio <= -FORWARD_THRESHOLD && current < pageCount - 1) {
+    const forwardByDistance = ratio <= -FORWARD_THRESHOLD;
+    const forwardByFlick = velocity <= -FLICK_VELOCITY_THRESHOLD && dragDelta < 0;
+    const backwardByDistance = ratio >= BACKWARD_THRESHOLD;
+    const backwardByFlick = velocity >= FLICK_VELOCITY_THRESHOLD && dragDelta > 0;
+
+    if ((forwardByDistance || forwardByFlick) && current < pageCount - 1) {
       onPageChange(current + 1);
-    } else if (ratio >= BACKWARD_THRESHOLD && current > 0) {
+    } else if ((backwardByDistance || backwardByFlick) && current > 0) {
       onPageChange(current - 1);
     } else {
-      // Didn't drag far enough either direction — snap back to
-      // the current page instead of committing a turn.
       setTrackX(pageOffsetPx(current), true);
     }
   }
