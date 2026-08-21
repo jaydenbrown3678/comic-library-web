@@ -47,7 +47,7 @@ html, body {
   padding: 0;
   background: var(--background);
   color: var(--text-primary);
-  font-family: -apple-system, "SF Pro Rounded", "Segoe UI Rounded", system-ui, sans-serif;
+  font-family: ui-rounded, -apple-system, "Segoe UI Rounded", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   transition: background 0.25s ease, color 0.25s ease;
 }
