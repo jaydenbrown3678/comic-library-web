@@ -387,6 +387,12 @@ function openReader(comicId) {
   view.style.display = "flex";
   document.body.style.overflow = "hidden";
 
+  document.querySelectorAll(".reader-page-img").forEach((img) => {
+    // Images may still be loading; either way this is safe to call
+    // immediately since it just wires up event listeners.
+    enableReaderPageZoom(img);
+  });
+
   const stage = document.getElementById("reader-stage");
   requestAnimationFrame(() => {
     stage.scrollLeft = currentReaderPage * stage.clientWidth;
@@ -398,6 +404,11 @@ function openReader(comicId) {
     scrollTimeout = setTimeout(() => {
       const page = Math.round(stage.scrollLeft / stage.clientWidth);
       if (page !== currentReaderPage) {
+        // Reset zoom on the page being left, so it's back to normal
+        // size next time it's viewed instead of staying zoomed in.
+        const previousImg = stage.children[currentReaderPage]?.querySelector(".reader-page-img");
+        previousImg?._resetReaderZoom?.();
+
         currentReaderPage = page;
         ProgressStore.updateLastPage(comicId, page);
         document.getElementById("reader-counter").textContent = `PAGE ${page + 1} OF ${comic.pageCount}`;
