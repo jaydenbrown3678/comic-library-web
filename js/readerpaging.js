@@ -166,7 +166,7 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     return (last.x - first.x) / dt; // px per ms, sign indicates direction
   }
 
-  function endDrag(e) {
+  function endDrag(e, { allowCommit = true } = {}) {
     activePointerIds.delete(e.pointerId);
     if (!dragging) return;
     dragging = false;
@@ -175,10 +175,26 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
       rafId = null;
     }
 
+    const current = getCurrentPage();
+
+    if (!allowCommit) {
+      // A pointercancel (rather than a normal pointerup) signals an
+      // interrupted or abnormal gesture — most commonly, some mobile
+      // browsers fire one for the first finger the instant a second
+      // finger touches down, as the gesture transitions from
+      // single-touch to a pinch. If any brief movement happened in
+      // that split second before the second finger registered, a
+      // real page-turn commit here would misread it as an
+      // intentional swipe — visible as the whole page track suddenly
+      // sliding away just as a pinch was starting. So a cancel only
+      // ever snaps back to the current page, never commits a turn.
+      setTrackX(pageOffsetPx(current), true);
+      return;
+    }
+
     const dragDelta = currentX - startX;
     const ratio = dragDelta / stageWidth;
     const velocity = currentVelocity();
-    const current = getCurrentPage();
 
     const forwardByDistance = ratio <= -FORWARD_THRESHOLD;
     const forwardByFlick = velocity <= -FLICK_VELOCITY_THRESHOLD && dragDelta < 0;
@@ -194,8 +210,8 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     }
   }
 
-  stage.addEventListener("pointerup", endDrag);
-  stage.addEventListener("pointercancel", endDrag);
+  stage.addEventListener("pointerup", (e) => endDrag(e, { allowCommit: true }));
+  stage.addEventListener("pointercancel", (e) => endDrag(e, { allowCommit: false }));
 
   window.addEventListener("resize", () => {
     stageWidth = stage.clientWidth;
