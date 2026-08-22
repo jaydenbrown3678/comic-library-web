@@ -103,12 +103,21 @@ function setupReaderPaging(stage, track, pageCount, { getCurrentPage, onPageChan
     return rawDelta;
   }
 
+  let pendingX = null;
+
   function scheduleTrackUpdate(x) {
-    if (rafId !== null) return; // a frame is already pending, let it pick up the latest x
+    // Always record the latest position immediately, even if a frame
+    // is already pending — the previous version returned early
+    // without updating anything the pending frame would read, so any
+    // pointermove events that arrived faster than the browser's paint
+    // rate got silently dropped instead of applied, causing the
+    // track to visibly lag and then jump to catch up (the "hitch").
+    pendingX = x;
+    if (rafId !== null) return;
     rafId = requestAnimationFrame(() => {
       track.style.transition = "none";
-      track.style.transform = `translateX(${x}px)`;
-      currentAppliedX = x;
+      track.style.transform = `translateX(${pendingX}px)`;
+      currentAppliedX = pendingX;
       rafId = null;
     });
   }

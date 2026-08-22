@@ -80,18 +80,32 @@ function enableReaderPageZoom(imgEl) {
   }
 
   function clampAndApply() {
-    // Keep the image from being dragged entirely off-screen once
-    // zoomed — clamps translation so at least part of the image
-    // stays visible within its container.
+    // Keep the image from being panned completely out of view once
+    // zoomed — but only that. An earlier version required the image
+    // to fully COVER its container at all times, which sounds
+    // reasonable but is far stricter than it needs to be: for a
+    // wide/short (landscape) image, the zoomed height often only
+    // barely exceeds its container's height, leaving almost no
+    // legitimate pan range under that rule — so a pinch anchored
+    // near the top or bottom would get clamped well short of where
+    // it should land, and the point under your fingers would
+    // visibly drift even though the horizontal axis (with much more
+    // pannable range) anchored perfectly. Requiring only that some
+    // minimum sliver of the image stays visible, rather than full
+    // coverage, gives enough room for the anchor point to actually
+    // be reached in these cases.
     if (baseWidth === 0) captureBaseGeometry(); // fallback if load hadn't fired yet
     const parent = imgEl.parentElement.getBoundingClientRect();
     const scaledWidth = baseWidth * scale;
     const scaledHeight = baseHeight * scale;
+    const minVisible = 40; // px of the image that must stay on-screen
 
-    const minX = Math.min(0, parent.width - scaledWidth);
-    const minY = Math.min(0, parent.height - scaledHeight);
-    translateX = Math.max(minX, Math.min(0, translateX));
-    translateY = Math.max(minY, Math.min(0, translateY));
+    const minX = -scaledWidth + minVisible;
+    const maxX = parent.width - minVisible;
+    const minY = -scaledHeight + minVisible;
+    const maxY = parent.height - minVisible;
+    translateX = Math.max(minX, Math.min(maxX, translateX));
+    translateY = Math.max(minY, Math.min(maxY, translateY));
     applyTransform();
   }
 
