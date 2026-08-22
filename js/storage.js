@@ -102,4 +102,4 @@ const AppearanceStore = {
   set(mode) {
     localStorage.setItem(APPEARANCE_KEY, mode);
   },
-};
+}; 
