@@ -12,7 +12,7 @@
 // never a two-finger gesture, so there's no ambiguity to resolve.
 // ==========================================================
 
-const MAX_ZOOM = 4;
+const MAX_ZOOM = 7;
 const DOUBLE_TAP_ZOOM = 2.5;
 const DOUBLE_TAP_MAX_DELAY_MS = 300;
 const DOUBLE_TAP_MAX_DISTANCE_PX = 30;
@@ -98,7 +98,7 @@ function enableReaderPageZoom(imgEl) {
     const parent = imgEl.parentElement.getBoundingClientRect();
     const scaledWidth = baseWidth * scale;
     const scaledHeight = baseHeight * scale;
-    const minVisible = 40; // px of the image that must stay on-screen
+    const minVisible = 15; // px of the image that must stay on-screen — kept small so panning has as much room as possible
 
     const minX = -scaledWidth + minVisible;
     const maxX = parent.width - minVisible;
