@@ -345,11 +345,25 @@ a {
 
 /* ---------- Grid (search / category / subcategory / history) ---------- */
 
+/* Uses flex-wrap rather than a fixed-column CSS grid — a grid with,
+   say, 3 defined columns still reserves that 3rd column's worth of
+   space even when a category only has 1 or 2 comics in it, leaving
+   an unbalanced-looking gap. Flex-wrap just places items left to
+   right at their natural size and wraps onto a new row once there's
+   enough content to need one, so the layout looks correct and
+   evenly spaced no matter how many comics are actually in a given
+   category. 110px width is sized so exactly 3 fit per row on a
+   typical phone screen once there's enough content to fill it. */
 .grid-view {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 18px 14px;
   padding: 16px;
+}
+
+.grid-view .cover-cell {
+  width: 110px;
+  flex: 0 0 110px;
 }
 
 /* Used for a single subcategory's comics (e.g. everything under
@@ -369,17 +383,6 @@ a {
 .subcategory-grid-view .cover-cell {
   width: 130px;
   flex: 0 0 130px;
-}
-
-/* Inside the 4-column grid, cover cells need to flex to fill their
-   column rather than using the fixed pixel width designed for
-   horizontal-scroll shelves — otherwise they'd overflow their grid
-   cell instead of lining up symmetrically. aspect-ratio keeps the
-   same 2:3 cover proportions at whatever width the column ends up
-   being. */
-.grid-view .cover-cell {
-  width: 100%;
-  flex: initial;
 }
 
 .grid-view .cover-art-wrap,
