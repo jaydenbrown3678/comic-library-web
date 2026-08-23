@@ -1989,16 +1989,5 @@
     ],
     "isSubcategoryCover": true,
     "subcategoryCoverImage": "images/covers/subcat-Manga-Fullmetal-Alchemist.jpg"
-  },
-  {
-    "id": "Immortal-Hulk-Omnibus-2023",
-    "title": "The Immortal Hulk Omnibus",
-    "author": "Al Ewing & Joe Bennett",
-    "year": 2023,
-    "synopsis": "A dark and horrific reimagining of the Incredible Hulk. Bruce Banner is hunted by the government, the military, and the mysterious Shadow Base organization. But the Hulk is no longer just a monster—he is immortal, and every time he dies, he returns angrier and more powerful. As Banner confronts the true nature of the Hulk, he discovers that the creature inside him is connected to something far more ancient and terrifying than he ever imagined. This omnibus collects the entire critically acclaimed run that redefined the Hulk for a new generation.",
-    "category": "Marvel",
-    "categoryColor": "red",
-    "subcategory": "Hulk",
-    "pageCount": 1480
   }
 ]
