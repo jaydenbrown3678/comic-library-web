@@ -354,16 +354,21 @@ a {
    evenly spaced no matter how many comics are actually in a given
    category. 110px width is sized so exactly 3 fit per row on a
    typical phone screen once there's enough content to fill it. */
+/* CSS Grid with fractional (1fr) columns — unlike a fixed pixel
+   width, this automatically divides whatever space is actually
+   available into exactly 3 equal columns, so it correctly fits 3
+   per row on a narrow phone screen exactly as reliably as on a wide
+   desktop one, instead of a hand-picked pixel width that happens to
+   leave enough room on one but not the other. */
 .grid-view {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 10px;
   padding: 16px;
 }
 
 .grid-view .cover-cell {
-  width: 82px;
-  flex: 0 0 82px;
+  width: 100%;
 }
 
 /* Used for a single subcategory's comics (e.g. everything under
