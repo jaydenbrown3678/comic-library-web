@@ -357,13 +357,13 @@ a {
 .grid-view {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 12px;
+  gap: 12px 10px;
   padding: 16px;
 }
 
 .grid-view .cover-cell {
-  width: 98px;
-  flex: 0 0 98px;
+  width: 82px;
+  flex: 0 0 82px;
 }
 
 /* Used for a single subcategory's comics (e.g. everything under
@@ -394,11 +394,11 @@ a {
 }
 
 .grid-view .cover-title {
-  font-size: 11.5px;
+  font-size: 10px;
 }
 
 .grid-view .cover-meta {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 /* ---------- Empty / loading states ---------- */
