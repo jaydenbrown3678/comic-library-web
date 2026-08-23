@@ -485,6 +485,23 @@ function openReader(comicId) {
     if (currentReaderPage < comic.pageCount - 1) goToPage(currentReaderPage + 1);
   });
 
+  // Left/right arrow keys turn pages too, for anyone reading on a
+  // computer rather than touch. Also briefly shows the controls, same
+  // as a tap or mouse movement, so the page counter is visible
+  // whichever way you're navigating. Removed again in closeReader,
+  // so this listener doesn't keep firing once you've left the reader.
+  function handleReaderKeydown(e) {
+    if (e.key === "ArrowRight" && currentReaderPage < comic.pageCount - 1) {
+      goToPage(currentReaderPage + 1);
+      showReaderControls();
+    } else if (e.key === "ArrowLeft" && currentReaderPage > 0) {
+      goToPage(currentReaderPage - 1);
+      showReaderControls();
+    }
+  }
+  document.addEventListener("keydown", handleReaderKeydown);
+  view._handleReaderKeydown = handleReaderKeydown;
+
   // Show the arrows + page counter briefly on tap or mouse movement,
   // then fade them back out automatically so they never sit on top
   // of the artwork while just reading.
@@ -555,9 +572,14 @@ function openReader(comicId) {
 }
 
 function closeReader() {
-  document.getElementById("reader-view").style.display = "none";
+  const view = document.getElementById("reader-view");
+  view.style.display = "none";
   document.body.style.overflow = "";
   currentReaderComic = null;
+  if (view._handleReaderKeydown) {
+    document.removeEventListener("keydown", view._handleReaderKeydown);
+    view._handleReaderKeydown = null;
+  }
   renderLibrary();
 }
 
@@ -1047,6 +1069,10 @@ function closeReaderIfOpen() {
     view.style.display = "none";
     document.body.style.overflow = "";
     currentReaderComic = null;
+    if (view._handleReaderKeydown) {
+      document.removeEventListener("keydown", view._handleReaderKeydown);
+      view._handleReaderKeydown = null;
+    }
   }
 }
 
