@@ -282,7 +282,7 @@ function renderCategoryGrid(categoryName) {
   ].join("");
   container.innerHTML = `
     ${backHeaderHTML(group.category.toUpperCase())}
-    <div class="grid-view">${tiles}</div>`;
+    <div class="three-col-grid">${tiles}</div>`;
 }
 
 function renderSubcategoryGrid(categoryName, subName) {
@@ -296,7 +296,7 @@ function renderSubcategoryGrid(categoryName, subName) {
   }
   container.innerHTML = `
     ${backHeaderHTML(subName.toUpperCase())}
-    <div class="subcategory-grid-view">${sub.comics.map((c) => renderCoverCell(c, { accentVar: "var(--accent)" })).join("")}</div>`;
+    <div class="three-col-grid">${sub.comics.map((c) => renderCoverCell(c, { accentVar: "var(--accent)" })).join("")}</div>`;
 }
 
 function renderSearch(query) {

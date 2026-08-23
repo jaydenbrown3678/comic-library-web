@@ -352,58 +352,57 @@ a {
    right at their natural size and wraps onto a new row once there's
    enough content to need one, so the layout looks correct and
    evenly spaced no matter how many comics are actually in a given
-   category. 110px width is sized so exactly 3 fit per row on a
-   typical phone screen once there's enough content to fill it. */
-/* CSS Grid with fractional (1fr) columns — unlike a fixed pixel
-   width, this automatically divides whatever space is actually
-   available into exactly 3 equal columns, so it correctly fits 3
-   per row on a narrow phone screen exactly as reliably as on a wide
-   desktop one, instead of a hand-picked pixel width that happens to
-   leave enough room on one but not the other. */
+/* Category and subcategory "See All" pages now reuse the exact same
+   .shelf-scroll styling as the library home screen (see above) —
+   trying to force a specific number of columns kept fighting against
+   real device width differences across phone vs. desktop testing.
+
+   Search results and reading history are different: they can grow to
+   many more items over time than a single subcategory ever would, so
+   a wrapping grid (rather than one long horizontally-scrolling row)
+   is actually the right fit there. auto-fill lets the browser figure
+   out how many comfortably fit per row at any width, rather than
+   hand-picking a column count that only works at one specific size. */
 .grid-view {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 20px 14px;
+  padding: 16px;
+}
+
+/* Used for category and subcategory pages — always exactly 3 equal
+   columns, computed as a fraction of whatever width is actually
+   available (1fr), rather than a fixed pixel width that only fits
+   comfortably on some screens and not others. Cover art below uses
+   the same fixed 2:3 aspect-ratio as everywhere else in the app, so
+   these look visually consistent with the Library home screen —
+   just sized to fit 3 per row instead of scrolling horizontally. */
+.three-col-grid {
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 10px;
+  gap: 16px 10px;
   padding: 16px;
 }
 
-.grid-view .cover-cell {
+.three-col-grid .cover-cell {
   width: 100%;
+  flex: initial;
 }
 
-/* Used for a single subcategory's comics (e.g. everything under
-   "Tigger") — these lists are often short, sometimes just one or two
-   stories. Unlike .grid-view above, items here keep their natural
-   fixed width and wrap onto new rows as needed, rather than
-   stretching to fill a rigid number of columns — which would leave
-   large empty gaps to the right whenever there are fewer than 4
-   items. */
-.subcategory-grid-view {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 22px 16px;
-  padding: 16px;
-}
-
-.subcategory-grid-view .cover-cell {
-  width: 130px;
-  flex: 0 0 130px;
-}
-
-.grid-view .cover-art-wrap,
-.grid-view .cover-art,
-.grid-view .cover-img {
+.three-col-grid .cover-art-wrap,
+.three-col-grid .cover-art,
+.three-col-grid .cover-img {
   width: 100%;
   height: auto;
   aspect-ratio: 2 / 3;
 }
 
-.grid-view .cover-title {
-  font-size: 10px;
+.three-col-grid .cover-title {
+  font-size: 12px;
 }
 
-.grid-view .cover-meta {
-  font-size: 9px;
+.three-col-grid .cover-meta {
+  font-size: 10.5px;
 }
 
 /* ---------- Empty / loading states ---------- */
