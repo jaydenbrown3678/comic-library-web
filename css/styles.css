@@ -347,9 +347,28 @@ a {
 
 .grid-view {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px 14px;
   padding: 16px;
+}
+
+/* Inside the 4-column grid, cover cells need to flex to fill their
+   column rather than using the fixed pixel width designed for
+   horizontal-scroll shelves — otherwise they'd overflow their grid
+   cell instead of lining up symmetrically. aspect-ratio keeps the
+   same 2:3 cover proportions at whatever width the column ends up
+   being. */
+.grid-view .cover-cell {
+  width: 100%;
+  flex: initial;
+}
+
+.grid-view .cover-art-wrap,
+.grid-view .cover-art,
+.grid-view .cover-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
 }
 
 /* ---------- Empty / loading states ---------- */
