@@ -296,7 +296,7 @@ function renderSubcategoryGrid(categoryName, subName) {
   }
   container.innerHTML = `
     ${backHeaderHTML(subName.toUpperCase())}
-    <div class="grid-view">${sub.comics.map((c) => renderCoverCell(c, { accentVar: "var(--accent)" })).join("")}</div>`;
+    <div class="subcategory-grid-view">${sub.comics.map((c) => renderCoverCell(c, { accentVar: "var(--accent)" })).join("")}</div>`;
 }
 
 function renderSearch(query) {

@@ -352,6 +352,25 @@ a {
   padding: 16px;
 }
 
+/* Used for a single subcategory's comics (e.g. everything under
+   "Tigger") — these lists are often short, sometimes just one or two
+   stories. Unlike .grid-view above, items here keep their natural
+   fixed width and wrap onto new rows as needed, rather than
+   stretching to fill a rigid number of columns — which would leave
+   large empty gaps to the right whenever there are fewer than 4
+   items. */
+.subcategory-grid-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px 16px;
+  padding: 16px;
+}
+
+.subcategory-grid-view .cover-cell {
+  width: 130px;
+  flex: 0 0 130px;
+}
+
 /* Inside the 4-column grid, cover cells need to flex to fill their
    column rather than using the fixed pixel width designed for
    horizontal-scroll shelves — otherwise they'd overflow their grid
