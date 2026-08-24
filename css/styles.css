@@ -370,23 +370,23 @@ a {
   padding: 16px;
 }
 
-/* Used for category and subcategory pages — always exactly 3 equal
-   columns, computed as a fraction of whatever width is actually
-   available (1fr), rather than a fixed pixel width that only fits
-   comfortably on some screens and not others. Cover art below uses
-   the same fixed 2:3 aspect-ratio as everywhere else in the app, so
-   these look visually consistent with the Library home screen —
-   just sized to fit 3 per row instead of scrolling horizontally. */
+/* Used for category and subcategory pages — always exactly 3 items
+   visible at once, sized as a fraction of the available width so it
+   fits correctly on any screen. A 4th+ item doesn't push onto a new
+   row — it scrolls into view horizontally instead, snapping cleanly
+   into place, the same way the Library home screen's shelves work. */
 .three-col-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px 10px;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 10px;
   padding: 16px;
 }
 
 .three-col-grid .cover-cell {
-  width: 100%;
-  flex: initial;
+  flex: 0 0 calc((100% - 20px) / 3); /* 3 visible per row; 20px accounts for the 2 gaps between them */
+  width: calc((100% - 20px) / 3);
+  scroll-snap-align: start;
 }
 
 .three-col-grid .cover-art-wrap,
@@ -672,6 +672,7 @@ a {
   z-index: 41;
   max-height: 85vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -874,6 +875,12 @@ a {
   background: var(--background);
   color: var(--accent);
   cursor: pointer;
+  /* Reduces a known mobile Safari quirk where the first tap right
+     after scrolling can get consumed as a "stop scrolling" gesture
+     instead of registering as an actual tap on the button —
+     especially relevant here since longer character lists mean more
+     scrolling to reach buttons further down. */
+  touch-action: manipulation;
 }
 
 .manage-upload-btn svg {
