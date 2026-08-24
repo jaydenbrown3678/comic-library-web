@@ -352,57 +352,57 @@ a {
    right at their natural size and wraps onto a new row once there's
    enough content to need one, so the layout looks correct and
    evenly spaced no matter how many comics are actually in a given
-/* Category and subcategory "See All" pages now reuse the exact same
-   .shelf-scroll styling as the library home screen (see above) —
-   trying to force a specific number of columns kept fighting against
-   real device width differences across phone vs. desktop testing.
-
-   Search results and reading history are different: they can grow to
-   many more items over time than a single subcategory ever would, so
-   a wrapping grid (rather than one long horizontally-scrolling row)
-   is actually the right fit there. auto-fill lets the browser figure
-   out how many comfortably fit per row at any width, rather than
-   hand-picking a column count that only works at one specific size. */
+   category. 110px width is sized so exactly 3 fit per row on a
+   typical phone screen once there's enough content to fill it. */
+/* Deliberately not trying to force an exact number of columns —
+   that approach kept fighting against real device width differences.
+   Instead: comfortably large, generously spaced items that wrap
+   naturally onto as many per row as actually fit. */
 .grid-view {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 20px 14px;
-  padding: 16px;
-}
-
-/* Used for category and subcategory pages — always exactly 3 items
-   visible at once, sized as a fraction of the available width so it
-   fits correctly on any screen. A 4th+ item doesn't push onto a new
-   row — it scrolls into view horizontally instead, snapping cleanly
-   into place, the same way the Library home screen's shelves work. */
-.three-col-grid {
   display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 28px 20px;
+  padding: 20px;
+}
+
+.grid-view .cover-cell {
+  width: 150px;
+  flex: 0 0 150px;
+}
+
+/* Used for a single subcategory's comics (e.g. everything under
+   "Tigger") — these lists are often short, sometimes just one or two
+   stories. Unlike .grid-view above, items here keep their natural
+   fixed width and wrap onto new rows as needed, rather than
+   stretching to fill a rigid number of columns — which would leave
+   large empty gaps to the right whenever there are fewer than 4
+   items. */
+.subcategory-grid-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px 16px;
   padding: 16px;
 }
 
-.three-col-grid .cover-cell {
-  flex: 0 0 calc((100% - 20px) / 3); /* 3 visible per row; 20px accounts for the 2 gaps between them */
-  width: calc((100% - 20px) / 3);
-  scroll-snap-align: start;
+.subcategory-grid-view .cover-cell {
+  width: 130px;
+  flex: 0 0 130px;
 }
 
-.three-col-grid .cover-art-wrap,
-.three-col-grid .cover-art,
-.three-col-grid .cover-img {
+.grid-view .cover-art-wrap,
+.grid-view .cover-art,
+.grid-view .cover-img {
   width: 100%;
   height: auto;
   aspect-ratio: 2 / 3;
 }
 
-.three-col-grid .cover-title {
-  font-size: 12px;
+.grid-view .cover-title {
+  font-size: 15px;
 }
 
-.three-col-grid .cover-meta {
-  font-size: 10.5px;
+.grid-view .cover-meta {
+  font-size: 12.5px;
 }
 
 /* ---------- Empty / loading states ---------- */
@@ -672,7 +672,6 @@ a {
   z-index: 41;
   max-height: 85vh;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -875,12 +874,6 @@ a {
   background: var(--background);
   color: var(--accent);
   cursor: pointer;
-  /* Reduces a known mobile Safari quirk where the first tap right
-     after scrolling can get consumed as a "stop scrolling" gesture
-     instead of registering as an actual tap on the button —
-     especially relevant here since longer character lists mean more
-     scrolling to reach buttons further down. */
-  touch-action: manipulation;
 }
 
 .manage-upload-btn svg {
