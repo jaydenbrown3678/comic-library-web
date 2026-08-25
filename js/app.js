@@ -623,6 +623,13 @@ function openSettings() {
     { id: "light", label: "Light", icon: ICONS.sun },
     { id: "dark", label: "Dark", icon: ICONS.moon },
   ];
+
+  const currentWallpaper = WallpaperStore.get();
+  const wallpaperOptions = [
+    { id: "none", label: "None" },
+    ...WALLPAPER_SLOTS.map((slot) => ({ id: `wallpaper:${slot}`, label: `Wallpaper ${slot}`, slot })),
+  ];
+
   document.getElementById("settings-sheet").innerHTML = `
     <div class="sheet-header">
       <div class="sheet-title">SETTINGS</div>
@@ -640,6 +647,24 @@ function openSettings() {
         )
         .join("")}
     </div>
+    <div class="settings-section-label">Wallpaper</div>
+    <div class="wallpaper-picker">
+      ${wallpaperOptions
+        .map((opt) => {
+          const isSelected = currentWallpaper === opt.id;
+          const thumbContent =
+            opt.id === "none"
+              ? `<div class="wallpaper-swatch-none">${ICONS.xCircle}</div>`
+              : `<img src="${wallpaperDisplayURL(opt.slot)}" alt="${escapeHTML(opt.label)}" onerror="this.outerHTML='<div class=&quot;wallpaper-swatch-empty&quot;></div>'">`;
+          return `
+            <button class="wallpaper-swatch pressable ${isSelected ? "wallpaper-swatch-selected" : ""}" data-wallpaper-id="${opt.id}">
+              ${thumbContent}
+              ${isSelected ? `<div class="wallpaper-swatch-check">${ICONS.check}</div>` : ""}
+              <span class="wallpaper-swatch-label">${escapeHTML(opt.label)}</span>
+            </button>`;
+        })
+        .join("")}
+    </div>
     <div class="settings-section-label">About</div>
     <div class="settings-about">
       Buddha's Comic Library collects public domain comics for anyone to read, free, with no paywall.
@@ -652,6 +677,13 @@ function openSettings() {
       AppearanceStore.set(row.dataset.mode);
       applyAppearance();
       openSettings();
+    });
+  });
+  document.querySelectorAll(".wallpaper-swatch").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      WallpaperStore.set(btn.dataset.wallpaperId);
+      applyWallpaper();
+      openSettings(); // re-render so the checkmark moves to the new selection
     });
   });
   document.getElementById("settings-done").addEventListener("click", closeSettings);
@@ -780,6 +812,40 @@ function renderManageImagesSheet() {
       <div class="manage-list">${subcategoryRows}</div>`
     : "";
 
+  const wallpaperRows = WALLPAPER_SLOTS.map((slot) => {
+    const url = wallpaperImageURL(slot);
+    return `
+      <div class="manage-row" data-wallpaper-slot="${slot}">
+        <div class="manage-row-thumb">
+          ${url ? `<img src="${url}" alt="">` : `<div class="manage-row-thumb-empty">${ICONS.image}</div>`}
+        </div>
+        <div class="manage-row-body">
+          <div class="manage-row-title">Wallpaper ${slot}</div>
+          <div class="manage-row-meta">Selectable as a background in Settings</div>
+          <div class="manage-row-actions">
+            <label class="manage-upload-btn pressable">
+              ${ICONS.upload} Image
+              <input type="file" accept="image/*" class="manage-wallpaper-input" data-slot="${slot}" hidden>
+            </label>
+            ${
+              url
+                ? `<button class="manage-clear-btn pressable manage-wallpaper-clear" data-slot="${slot}">${ICONS.trash}</button>`
+                : ""
+            }
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+
+  const wallpaperSection = `
+    <div class="settings-section-label" style="margin-top:6px;">Wallpapers</div>
+    <div class="manage-intro" style="padding-top:0;">
+      Upload up to ${WALLPAPER_SLOTS.length} background images. Anyone
+      visiting the site can then pick one in Settings → Wallpaper —
+      the usual card and text styling stays on top, unchanged.
+    </div>
+    <div class="manage-list">${wallpaperRows}</div>`;
+
   document.getElementById("images-sheet").innerHTML = `
     <div class="sheet-header">
       <div class="sheet-title">MANAGE IMAGES</div>
@@ -801,6 +867,7 @@ function renderManageImagesSheet() {
     <div class="settings-section-label">Comics</div>
     <div class="manage-list">${rows}</div>
     ${subcategorySection}
+    ${wallpaperSection}
   `;
 
   document.getElementById("images-done").addEventListener("click", closeManageImages);
@@ -810,7 +877,7 @@ function renderManageImagesSheet() {
     input.addEventListener("change", handleImageFileSelected);
   });
 
-  document.querySelectorAll(".manage-clear-btn:not(.manage-subcat-clear)").forEach((btn) => {
+  document.querySelectorAll(".manage-clear-btn:not(.manage-subcat-clear):not(.manage-wallpaper-clear)").forEach((btn) => {
     btn.addEventListener("click", async () => {
       await ImageStore.deleteAllForComic(btn.dataset.comicId);
       await loadAllImageURLs();
@@ -829,6 +896,48 @@ function renderManageImagesSheet() {
       renderManageImagesSheet();
     });
   });
+
+  document.querySelectorAll(".manage-wallpaper-input").forEach((input) => {
+    input.addEventListener("change", handleWallpaperImageSelected);
+  });
+
+  document.querySelectorAll(".manage-wallpaper-clear").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await ImageStore.deleteKey(wallpaperKey(btn.dataset.slot));
+      await loadAllImageURLs();
+      // If the wallpaper being cleared was the currently-selected
+      // one, fall back cleanly to the default background instead of
+      // leaving the app pointed at an image that no longer exists.
+      const selected = WallpaperStore.get();
+      if (selected === `wallpaper:${btn.dataset.slot}`) {
+        WallpaperStore.set("none");
+      }
+      applyWallpaper();
+      renderManageImagesSheet();
+    });
+  });
+}
+
+async function handleWallpaperImageSelected(e) {
+  const input = e.target;
+  const slot = input.dataset.slot;
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    // Wallpapers fill the whole screen, so they get more room to
+    // stay sharp than a small cover thumbnail would — but still
+    // resized down from a raw multi-MB phone photo, since nothing
+    // in this reader needs more than this to look good full-screen.
+    const resized = await resizeImageFile(file, 1400, 0.85);
+    await ImageStore.putBlob(wallpaperKey(slot), resized);
+  } catch (err) {
+    console.error("Wallpaper upload failed:", err);
+    alert("Something went wrong processing that image. Try a different file.\n\nDetails: " + (err?.message || err));
+  } finally {
+    await loadAllImageURLs();
+    applyWallpaper(); // in case this slot is the currently-selected wallpaper
+    renderManageImagesSheet();
+  }
 }
 
 async function handleSubcategoryImageSelected(e) {
@@ -992,6 +1101,17 @@ async function exportAsZip() {
     target.subcategoryCoverImage = `images/covers/${filename}`;
   }
 
+  // Wallpapers — saved to the conventional path other visitors'
+  // browsers check as a fallback (see wallpaperDisplayURL), since
+  // wallpapers aren't tied to any individual comic the way covers
+  // and page images are.
+  for (const slot of WALLPAPER_SLOTS) {
+    const blob = blobsByKey.get(wallpaperKey(slot));
+    if (blob) {
+      zipEntries.push({ path: `images/wallpapers/wallpaper-${slot}.jpg`, data: await blobToUint8Array(blob) });
+    }
+  }
+
   const jsonText = JSON.stringify(updatedComics, null, 2);
   zipEntries.push({ path: "data/comics.json", data: new TextEncoder().encode(jsonText) });
 
@@ -1058,6 +1178,37 @@ function applyAppearance() {
     effective = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   document.documentElement.setAttribute("data-theme", effective);
+}
+
+// Applies whichever wallpaper is currently selected (if any) as the
+// app's background. The existing card/UI styling stays exactly as
+// it is on top — a semi-transparent scrim (added via the
+// has-wallpaper class, see CSS) sits between the photo and the
+// content so text and cards stay readable regardless of what's in
+// the wallpaper image.
+function applyWallpaper() {
+  const shell = document.querySelector(".app-shell");
+  if (!shell) return;
+  const selected = WallpaperStore.get();
+  const slot = selected.startsWith("wallpaper:") ? selected.split(":")[1] : null;
+
+  if (slot) {
+    // Set as a custom property, not a direct background-image, so
+    // the CSS pseudo-element handling the actual rendering (see
+    // .has-wallpaper::before) can layer a readability scrim between
+    // the photo and the existing card/text styling on top — a
+    // background-image set directly here couldn't be combined that
+    // way with a pseudo-element from pure CSS. Fails silently (no
+    // visible error, just falls back to the plain background color)
+    // if this guessed path doesn't actually exist yet — acceptable,
+    // graceful degradation for a wallpaper that's been selected but
+    // not yet exported.
+    shell.style.setProperty("--wallpaper-url", `url("${wallpaperDisplayURL(slot)}")`);
+    shell.classList.add("has-wallpaper");
+  } else {
+    shell.style.removeProperty("--wallpaper-url");
+    shell.classList.remove("has-wallpaper");
+  }
 }
 
 // ---------- Menu ----------
@@ -1179,6 +1330,7 @@ async function init() {
 
   await loadComics();
   await loadAllImageURLs();
+  applyWallpaper();
 
   document.getElementById("btn-menu").addEventListener("click", toggleMenu);
   document.getElementById("search-input").addEventListener("input", (e) => {

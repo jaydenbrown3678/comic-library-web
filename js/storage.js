@@ -8,6 +8,7 @@
 
 const STORAGE_KEY = "comicLibrary.progress";
 const APPEARANCE_KEY = "comicLibrary.appearanceMode";
+const WALLPAPER_KEY = "comicLibrary.wallpaper";
 
 const ProgressStore = {
   _readAll() {
@@ -102,4 +103,16 @@ const AppearanceStore = {
   set(mode) {
     localStorage.setItem(APPEARANCE_KEY, mode);
   },
-}; 
+};
+
+// "none" means the plain solid background (no wallpaper) — the
+// default. Otherwise stores which of the available wallpaper slots
+// (e.g. "wallpaper:1") is currently selected.
+const WallpaperStore = {
+  get() {
+    return localStorage.getItem(WALLPAPER_KEY) || "none";
+  },
+  set(id) {
+    localStorage.setItem(WALLPAPER_KEY, id);
+  },
+};

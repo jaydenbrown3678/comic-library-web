@@ -78,11 +78,38 @@ a {
 /* ---------- App shell / nav bar ---------- */
 
 .app-shell {
+  position: relative;
   max-width: 900px;
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Selected wallpaper renders on a pseudo-element BEHIND the actual
+   app content, with a semi-transparent scrim layered on top of the
+   image (combined in one background-image using two layers: a flat
+   color first, the photo second) — so the existing card/text styling
+   sits fully readable on top, unchanged, regardless of what's in the
+   photo underneath. Fixed positioning keeps it from scrolling with
+   the page content. */
+.app-shell.has-wallpaper::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: linear-gradient(var(--wallpaper-scrim, rgba(0, 0, 0, 0.55)), var(--wallpaper-scrim, rgba(0, 0, 0, 0.55))), var(--wallpaper-url);
+  background-size: cover;
+  background-position: center;
+}
+
+[data-theme="light"] .app-shell.has-wallpaper::before {
+  --wallpaper-scrim: rgba(255, 255, 255, 0.55);
+}
+
+.app-shell.has-wallpaper > * {
+  position: relative;
+  z-index: 1;
 }
 
 .nav-bar {
@@ -757,6 +784,75 @@ a {
 .settings-row .check {
   margin-left: auto;
   color: var(--accent);
+}
+
+/* ---------- Wallpaper picker (Settings) ---------- */
+
+.wallpaper-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 4px 16px 20px;
+}
+
+.wallpaper-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.wallpaper-swatch img,
+.wallpaper-swatch-none,
+.wallpaper-swatch-empty {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid transparent;
+}
+
+.wallpaper-swatch-none,
+.wallpaper-swatch-empty {
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.wallpaper-swatch-none svg,
+.wallpaper-swatch-empty svg {
+  width: 22px;
+  height: 22px;
+}
+
+.wallpaper-swatch-selected img,
+.wallpaper-swatch-selected .wallpaper-swatch-none,
+.wallpaper-swatch-selected .wallpaper-swatch-empty {
+  border-color: var(--accent);
+}
+
+.wallpaper-swatch-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.wallpaper-swatch-check svg {
+  width: 100%;
+  height: 100%;
+}
+
+.wallpaper-swatch-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 .settings-about {

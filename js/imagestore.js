@@ -165,6 +165,34 @@ function subcategoryCoverImageURL(category, name) {
   return IMAGE_URLS.get(subcategoryCoverKey(category, name)) || null;
 }
 
+// Background wallpapers, selectable in Settings. Starting with 3
+// slots (numbered 1-3) — a fixed, small set rather than an open-ended
+// upload list, since wallpapers are meant to be a handful of curated
+// options, not something that grows unbounded like comic pages.
+const WALLPAPER_SLOTS = [1, 2, 3];
+
+function wallpaperKey(slot) {
+  return `wallpaper:${slot}:image`;
+}
+
+function wallpaperImageURL(slot) {
+  return IMAGE_URLS.get(wallpaperKey(slot)) || null;
+}
+
+// Used specifically where a wallpaper actually needs to be shown
+// (the Settings picker, and applying the background itself) — falls
+// back to the conventional exported file path when nothing's in
+// this browser's IndexedDB, so a wallpaper an admin uploaded and
+// exported still works correctly for every other visitor, not just
+// the admin's own browser. wallpaperImageURL() above stays
+// IndexedDB-only, since the admin upload panel specifically needs
+// to know "has anything actually been uploaded in THIS browser" —
+// falling back to a guessed path there would make an un-uploaded
+// slot look populated.
+function wallpaperDisplayURL(slot) {
+  return wallpaperImageURL(slot) || `images/wallpapers/wallpaper-${slot}.jpg`;
+}
+
 // Returns an ordered array of page image URLs for a comic, or null
 // if no pages have been uploaded yet.
 function pageImageURLs(comicId, pageCount) {
