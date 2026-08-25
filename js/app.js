@@ -924,11 +924,11 @@ async function handleWallpaperImageSelected(e) {
   const file = input.files && input.files[0];
   if (!file) return;
   try {
-    // Wallpapers fill the whole screen, so they get more room to
-    // stay sharp than a small cover thumbnail would — but still
-    // resized down from a raw multi-MB phone photo, since nothing
-    // in this reader needs more than this to look good full-screen.
-    const resized = await resizeImageFile(file, 1400, 0.85);
+    // Wallpapers fill the whole screen — unlike small cover
+    // thumbnails, they need real resolution to stay sharp, especially
+    // on Retina/high-DPI displays where a 1400px image would visibly
+    // look soft stretched across a full laptop or phone screen.
+    const resized = await resizeImageFile(file, 2400, 0.88);
     await ImageStore.putBlob(wallpaperKey(slot), resized);
   } catch (err) {
     console.error("Wallpaper upload failed:", err);
@@ -1346,5 +1346,7 @@ async function init() {
   handleRoute();
   playLaunchAnimation();
 }
+
+init();
 
 init();
