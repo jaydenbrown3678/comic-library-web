@@ -213,23 +213,42 @@ a {
 /* ---------- Covers ---------- */
 
 .cover-cell {
-  flex: 0 0 130px;
-  width: 130px;
+  flex: 0 0 110px;
+  width: 110px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   scroll-snap-align: start;
 }
 
+/* Percentage-based sizing scoped to the horizontal shelf rows —
+   guarantees exactly 3 covers are ever visible with zero partial
+   peek of a 4th, computed as a fraction of the shelf's own width
+   rather than a fixed pixel guess (which only avoids peeking by
+   coincidence on some screen widths and not others). 28px accounts
+   for the 2 gaps between 3 items at this row's 14px gap. */
+.shelf-scroll .cover-cell {
+  flex: 0 0 122px;
+  width: 122px;
+}
+
+.shelf-scroll .cover-art-wrap,
+.shelf-scroll .cover-art,
+.shelf-scroll .cover-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+
 .cover-art-wrap {
   position: relative;
-  width: 126px;
-  height: 190px;
+  width: 100px;
+  height: 150px;
 }
 
 .cover-art {
-  width: 126px;
-  height: 190px;
+  width: 100px;
+  height: 150px;
   border-radius: var(--corner-radius);
   background: var(--surface);
   display: flex;
@@ -248,8 +267,8 @@ a {
    so a comic can freely switch between "has real art" and "doesn't"
    without any layout shift. */
 .cover-img {
-  width: 126px;
-  height: 190px;
+  width: 100px;
+  height: 150px;
   border-radius: var(--corner-radius);
   object-fit: cover;
   display: block;
@@ -1013,7 +1032,5 @@ a {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
-  .cover-cell { flex-basis: 112px; width: 112px; }
-  .cover-art-wrap, .cover-art, .cover-img { width: 108px; height: 164px; }
   .cover-outline { border-radius: var(--corner-radius); }
 }
