@@ -178,6 +178,25 @@ function pageImageURLs(comicId, pageCount) {
   return hasAny ? urls : null;
 }
 
+// Counts how many pages are actually stored for a comic, regardless
+// of what comics.json says its pageCount is — used so a second (or
+// third...) batch of page uploads continues on after whatever's
+// already there instead of overwriting from page 1 again. Scans for
+// the highest stored page index rather than assuming pages were
+// stored contiguously from 0, so it's still correct even if a batch
+// was uploaded out of order or with gaps.
+function countUploadedPages(comicId) {
+  const prefix = `${comicId}:page:`;
+  let highestIndex = -1;
+  for (const key of IMAGE_URLS.keys()) {
+    if (key.startsWith(prefix)) {
+      const index = parseInt(key.slice(prefix.length), 10);
+      if (!Number.isNaN(index) && index > highestIndex) highestIndex = index;
+    }
+  }
+  return highestIndex + 1;
+}
+
 // Natural sort so "page2.jpg" sorts before "page10.jpg" (plain
 // alphabetical sort would put page10 before page2).
 function naturalSortFiles(files) {

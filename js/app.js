@@ -40,7 +40,7 @@ function expandPageRange(range) {
 // 3. `pageImageRanges` in comics.json (condensed path-based ranges).
 // 4. null — the reader falls back to plain "Page N" placeholders.
 function resolvePageImages(comic) {
-  const uploaded = pageImageURLs(comic.id, comic.pageCount);
+  const uploaded = pageImageURLs(comic.id, effectivePageCount(comic));
   if (uploaded) return uploaded;
 
   if (Array.isArray(comic.pageImages) && comic.pageImages.length) {
@@ -107,8 +107,9 @@ function continueReadingItems() {
     .map((e) => {
       const comic = byId[e.comicID];
       if (!comic) return null;
-      if (e.lastPageIndex >= comic.pageCount - 1) return null; // finished
-      return { comic, lastPageIndex: e.lastPageIndex, progress: (e.lastPageIndex + 1) / comic.pageCount };
+      const totalPages = effectivePageCount(comic);
+      if (e.lastPageIndex >= totalPages - 1) return null; // finished
+      return { comic, lastPageIndex: e.lastPageIndex, progress: (e.lastPageIndex + 1) / totalPages };
     })
     .filter(Boolean);
 }
@@ -356,10 +357,15 @@ function openReader(comicId) {
   const comic = ALL_COMICS.find((c) => c.id === comicId);
   if (!comic) return;
   currentReaderComic = comic;
+  // Uses whichever is higher: what comics.json originally declared,
+  // or however many pages are actually uploaded — so a comic added
+  // in batches (e.g. 30 pages at a time) is fully readable even
+  // before its comics.json entry has been updated to match.
+  const totalPages = effectivePageCount(comic);
   const saved = ProgressStore.lastPageIndex(comicId);
-  currentReaderPage = saved != null ? Math.min(saved, comic.pageCount - 1) : 0;
+  currentReaderPage = saved != null ? Math.min(saved, totalPages - 1) : 0;
 
-  const pages = Array.from({ length: comic.pageCount }, (_, i) => i);
+  const pages = Array.from({ length: totalPages }, (_, i) => i);
   const resolvedPageImages = resolvePageImages(comic);
   const view = document.getElementById("reader-view");
   view.innerHTML = `
@@ -392,7 +398,7 @@ function openReader(comicId) {
           .join("")}
       </div>
     </div>
-    <div class="reader-counter" id="reader-counter">PAGE ${currentReaderPage + 1} OF ${comic.pageCount}</div>
+    <div class="reader-counter" id="reader-counter">PAGE ${currentReaderPage + 1} OF ${totalPages}</div>
     <button class="reader-arrow reader-arrow-left" id="reader-arrow-left" aria-label="Previous page">${ICONS.chevronLeft}</button>
     <button class="reader-arrow reader-arrow-right" id="reader-arrow-right" aria-label="Next page">${ICONS.chevronRight}</button>
   `;
@@ -431,7 +437,7 @@ function openReader(comicId) {
 
   function updateArrowStates() {
     arrowLeft.classList.toggle("reader-arrow-disabled", currentReaderPage === 0);
-    arrowRight.classList.toggle("reader-arrow-disabled", currentReaderPage === comic.pageCount - 1);
+    arrowRight.classList.toggle("reader-arrow-disabled", currentReaderPage === totalPages - 1);
   }
 
   function goToPage(newPage) {
@@ -440,7 +446,7 @@ function openReader(comicId) {
 
     currentReaderPage = newPage;
     ProgressStore.updateLastPage(comicId, newPage);
-    document.getElementById("reader-counter").textContent = `PAGE ${newPage + 1} OF ${comic.pageCount}`;
+    document.getElementById("reader-counter").textContent = `PAGE ${newPage + 1} OF ${totalPages}`;
     pagingController.goToPage(newPage, true);
     updateArrowStates();
 
@@ -471,7 +477,7 @@ function openReader(comicId) {
     });
   }
 
-  const pagingController = setupReaderPaging(stage, track, comic.pageCount, {
+  const pagingController = setupReaderPaging(stage, track, totalPages, {
     getCurrentPage: () => currentReaderPage,
     onPageChange: goToPage,
   });
@@ -482,7 +488,7 @@ function openReader(comicId) {
     if (currentReaderPage > 0) goToPage(currentReaderPage - 1);
   });
   arrowRight.addEventListener("click", () => {
-    if (currentReaderPage < comic.pageCount - 1) goToPage(currentReaderPage + 1);
+    if (currentReaderPage < totalPages - 1) goToPage(currentReaderPage + 1);
   });
 
   // Left/right arrow keys turn pages too, for anyone reading on a
@@ -491,7 +497,7 @@ function openReader(comicId) {
   // whichever way you're navigating. Removed again in closeReader,
   // so this listener doesn't keep firing once you've left the reader.
   function handleReaderKeydown(e) {
-    if (e.key === "ArrowRight" && currentReaderPage < comic.pageCount - 1) {
+    if (e.key === "ArrowRight" && currentReaderPage < totalPages - 1) {
       goToPage(currentReaderPage + 1);
       showReaderControls();
     } else if (e.key === "ArrowLeft" && currentReaderPage > 0) {
@@ -692,13 +698,24 @@ function allSubcategories() {
   return Array.from(seen.values());
 }
 
+// The higher of what comics.json declares for a comic's pageCount
+// and how many pages are actually uploaded — so adding pages beyond
+// the number originally set (e.g. uploading a 90-page comic 30 at a
+// time when comics.json only said pageCount: 30) is recognized
+// correctly everywhere: the reader, the upload screen's page count,
+// and the export step. Uses this instead of raw comic.pageCount
+// throughout.
+function effectivePageCount(comic) {
+  return Math.max(comic.pageCount || 0, countUploadedPages(comic.id));
+}
+
 function renderManageImagesSheet() {
   const rows = ALL_COMICS.map((comic) => {
     const cover = coverImageURL(comic.id);
-    const uploadedPages = pageImageURLs(comic.id, comic.pageCount);
-    const pageCountLabel = uploadedPages
-      ? `${uploadedPages.filter(Boolean).length} of ${comic.pageCount} pages uploaded`
-      : `0 of ${comic.pageCount} pages uploaded`;
+    const totalPages = effectivePageCount(comic);
+    const uploadedPages = pageImageURLs(comic.id, totalPages);
+    const uploadedCount = uploadedPages ? uploadedPages.filter(Boolean).length : 0;
+    const pageCountLabel = `${uploadedCount} of ${totalPages} pages uploaded`;
 
     return `
       <div class="manage-row" data-comic-id="${comic.id}">
@@ -818,10 +835,16 @@ async function handleSubcategoryImageSelected(e) {
   const input = e.target;
   const file = input.files && input.files[0];
   if (!file) return;
-  const resized = await resizeImageFile(file, 900, 0.85); // tile art shown small — lower max size is plenty
-  await ImageStore.putBlob(subcategoryCoverKey(input.dataset.category, input.dataset.subname), resized);
-  await loadAllImageURLs();
-  renderManageImagesSheet();
+  try {
+    const resized = await resizeImageFile(file, 900, 0.85); // tile art shown small — lower max size is plenty
+    await ImageStore.putBlob(subcategoryCoverKey(input.dataset.category, input.dataset.subname), resized);
+  } catch (err) {
+    console.error("Tile image upload failed:", err);
+    alert("Something went wrong processing that image. Try a different file.\n\nDetails: " + (err?.message || err));
+  } finally {
+    await loadAllImageURLs();
+    renderManageImagesSheet();
+  }
 }
 
 async function handleImageFileSelected(e) {
@@ -831,38 +854,65 @@ async function handleImageFileSelected(e) {
   const files = Array.from(input.files || []);
   if (!files.length) return;
 
-  setManageRowBusy(comicId, true);
-
-  if (kind === "cover") {
-    const resized = await resizeImageFile(files[0], 900, 0.85); // covers are shown small too
-    await ImageStore.putBlob(`${comicId}:cover`, resized);
-  } else {
-    // Sort by filename (natural order) so page-2 comes before
-    // page-10 — plain alphabetical sort would get this wrong.
-    const sorted = naturalSortFiles(files);
-    for (let i = 0; i < sorted.length; i++) {
-      // 1600px keeps pages readable full-screen while cutting a
-      // typical multi-MB phone photo down to a few hundred KB.
-      const resized = await resizeImageFile(sorted[i], 1600, 0.82);
-      await ImageStore.putBlob(`${comicId}:page:${i}`, resized);
+  try {
+    if (kind === "cover") {
+      setManageRowBusy(comicId, "Processing image…");
+      const resized = await resizeImageFile(files[0], 900, 0.85); // covers are shown small too
+      await ImageStore.putBlob(`${comicId}:cover`, resized);
+    } else {
+      // Sort by filename (natural order) so page-2 comes before
+      // page-10 — plain alphabetical sort would get this wrong.
+      const sorted = naturalSortFiles(files);
+      // Continue on from wherever the last batch left off, rather
+      // than always starting at page 1 — this is what makes adding
+      // a large comic 30 (or however many) pages at a time actually
+      // work: uploading a second batch appends after the first
+      // instead of overwriting it.
+      const startIndex = countUploadedPages(comicId);
+      for (let i = 0; i < sorted.length; i++) {
+        const pageIndex = startIndex + i;
+        // Live progress, since a large batch can genuinely take a
+        // while — without this, a slow-but-working upload looks
+        // identical to a stuck one.
+        setManageRowBusy(comicId, `Processing image ${i + 1} of ${sorted.length} (page ${pageIndex + 1})…`);
+        // 1600px keeps pages readable full-screen while cutting a
+        // typical multi-MB phone photo down to a few hundred KB.
+        const resized = await resizeImageFile(sorted[i], 1600, 0.82);
+        await ImageStore.putBlob(`${comicId}:page:${pageIndex}`, resized);
+      }
     }
+  } catch (err) {
+    // Whatever failed — one corrupted file, the browser's storage
+    // filling up, anything — this makes sure the person actually
+    // finds out, instead of the row silently freezing on "Processing
+    // images…" forever with no explanation and no way to retry.
+    // Anything that succeeded before the failure (e.g. pages 1-8 of
+    // a 12-page batch) is already safely stored, since each image is
+    // saved individually as soon as it's ready rather than all at
+    // the end.
+    console.error("Image upload failed partway through:", err);
+    alert(
+      "Something went wrong partway through this upload — any images processed before the error are still saved. " +
+        "Try again with fewer images at once, or check that each file is a valid image.\n\nDetails: " +
+        (err?.message || err)
+    );
+  } finally {
+    // Always runs, success or failure — the row never gets stuck
+    // showing "Processing…" indefinitely.
+    await loadAllImageURLs();
+    renderManageImagesSheet();
   }
-
-  await loadAllImageURLs();
-  renderManageImagesSheet();
 }
 
-// Shows a lightweight "Processing…" state on a comic's row while its
-// images are being resized — multi-page uploads can take a few
-// seconds, and without this it can look like nothing is happening.
-function setManageRowBusy(comicId, isBusy) {
+// Shows a live status message on a comic's row while its images are
+// being resized/stored — multi-page uploads can take a while, and
+// without this it can look like nothing is happening (or, worse,
+// like it's permanently stuck if something goes wrong).
+function setManageRowBusy(comicId, statusText) {
   const row = document.querySelector(`.manage-row[data-comic-id="${comicId}"]`);
   if (!row) return;
   const meta = row.querySelector(".manage-row-meta");
-  if (meta && isBusy) {
-    meta.dataset.originalText = meta.textContent;
-    meta.textContent = "Processing images…";
-  }
+  if (meta) meta.textContent = statusText;
 }
 
 // Converts every uploaded image (currently only living in this
@@ -893,9 +943,17 @@ async function exportAsZip() {
       updated.coverImage = `images/covers/${filename}`;
     }
 
+    const totalPages = effectivePageCount(comic);
+    if (totalPages !== comic.pageCount) {
+      // A batch upload added more pages than comics.json originally
+      // declared — correct it in the export so anyone else loading
+      // this file (not just this browser) sees the right page count.
+      updated.pageCount = totalPages;
+    }
+
     const pagePaths = [];
     let hasAnyPage = false;
-    for (let i = 0; i < comic.pageCount; i++) {
+    for (let i = 0; i < totalPages; i++) {
       const blob = blobsByKey.get(`${comic.id}:page:${i}`);
       if (blob) {
         hasAnyPage = true;
