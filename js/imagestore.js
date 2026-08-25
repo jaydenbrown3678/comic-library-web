@@ -25,7 +25,24 @@ function resizeImageFile(file, maxDimension = 1600, quality = 0.82) {
     const img = new Image();
     const objectURL = URL.createObjectURL(file);
 
+    // If the image's load/error events never fire for any reason —
+    // an unusual file, a browser quirk, anything — this used to hang
+    // forever with zero feedback: no success, no error, nothing.
+    // From the outside that's indistinguishable from "the upload
+    // button doesn't do anything," which is exactly the situation
+    // this is here to rule out. A stuck upload now surfaces as a
+    // clear, catchable error after a few seconds instead.
+    const timeoutId = setTimeout(() => {
+      URL.revokeObjectURL(objectURL);
+      reject(new Error("Timed out loading the image — it may be corrupted, an unsupported format, or too large."));
+    }, 8000);
+
+    function cleanup() {
+      clearTimeout(timeoutId);
+    }
+
     img.onload = () => {
+      cleanup();
       URL.revokeObjectURL(objectURL);
 
       let { width, height } = img;
@@ -52,6 +69,7 @@ function resizeImageFile(file, maxDimension = 1600, quality = 0.82) {
       );
     };
     img.onerror = () => {
+      cleanup();
       URL.revokeObjectURL(objectURL);
       reject(new Error("Failed to load image for resizing"));
     };
@@ -70,6 +88,14 @@ function openImageDB() {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+  });
+  // If opening ever fails, don't leave that failure cached forever —
+  // without this, a single early failure (even a brief, one-off one)
+  // would silently doom every future upload for the rest of the
+  // session, since the next call would just keep returning this same
+  // already-rejected promise instead of trying again.
+  dbPromise.catch(() => {
+    dbPromise = null;
   });
   return dbPromise;
 }
