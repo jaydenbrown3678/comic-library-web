@@ -60,6 +60,15 @@ function resizeImageFile(file, maxDimension = 1600, quality = 0.82) {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
+      // JPEG has no transparency — without this, any transparent area
+      // in a source PNG (very common in images from the web) silently
+      // renders as solid BLACK once flattened to JPEG, since an empty
+      // canvas defaults to transparent black and only the color
+      // channels survive the flatten, not the alpha. Filling white
+      // first means transparent regions become white instead, which
+      // is virtually always the better default.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
 
       canvas.toBlob(
