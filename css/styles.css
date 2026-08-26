@@ -98,13 +98,13 @@ a {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-image: linear-gradient(var(--wallpaper-scrim, rgba(0, 0, 0, 0.55)), var(--wallpaper-scrim, rgba(0, 0, 0, 0.55))), var(--wallpaper-url);
+  background-image: linear-gradient(var(--wallpaper-scrim, rgba(0, 0, 0, 0.22)), var(--wallpaper-scrim, rgba(0, 0, 0, 0.22))), var(--wallpaper-url);
   background-size: cover;
   background-position: center;
 }
 
 [data-theme="light"] .app-shell.has-wallpaper::before {
-  --wallpaper-scrim: rgba(255, 255, 255, 0.55);
+  --wallpaper-scrim: rgba(255, 255, 255, 0.35);
 }
 
 .app-shell.has-wallpaper > * {
