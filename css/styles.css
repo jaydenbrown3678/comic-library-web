@@ -79,6 +79,7 @@ a {
 
 .app-shell {
   position: relative;
+  z-index: 1;
   max-width: 900px;
   margin: 0 auto;
   min-height: 100vh;
@@ -86,30 +87,31 @@ a {
   flex-direction: column;
 }
 
-/* Selected wallpaper renders on a pseudo-element BEHIND the actual
-   app content, with a semi-transparent scrim layered on top of the
-   image (combined in one background-image using two layers: a flat
-   color first, the photo second) — so the existing card/text styling
-   sits fully readable on top, unchanged, regardless of what's in the
-   photo underneath. Fixed positioning keeps it from scrolling with
-   the page content. */
-.app-shell.has-wallpaper::before {
-  content: "";
+/* Selected wallpaper — a plain fixed, full-screen <img> behind
+   everything, with a separate semi-transparent scrim div directly
+   on top of it for text/card readability. Both sit behind .app-shell
+   in normal stacking order (it isn't given a z-index, so it stacks
+   above these by simple document order) — deliberately the most
+   basic possible approach: no custom properties, no pseudo-elements,
+   no combined multi-layer backgrounds. */
+#wallpaper-img {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+#wallpaper-scrim {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-image: linear-gradient(var(--wallpaper-scrim, rgba(0, 0, 0, 0.22)), var(--wallpaper-scrim, rgba(0, 0, 0, 0.22))), var(--wallpaper-url);
-  background-size: cover;
-  background-position: center;
+  background: rgba(0, 0, 0, 0.22);
 }
 
-[data-theme="light"] .app-shell.has-wallpaper::before {
-  --wallpaper-scrim: rgba(255, 255, 255, 0.35);
-}
-
-.app-shell.has-wallpaper > * {
-  position: relative;
-  z-index: 1;
+[data-theme="light"] #wallpaper-scrim {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .nav-bar {

@@ -29,6 +29,15 @@
     </div>
   </div>
 
+  <!-- Wallpaper background — a plain <img> plus a separate scrim
+       div, both fixed behind everything else. Deliberately simple
+       (no CSS custom properties, no multi-layer backgrounds, no
+       pseudo-elements) so there's as little as possible that could
+       behave inconsistently across browsers. Hidden by default;
+       shown/pointed at an image only via applyWallpaper() in app.js. -->
+  <img id="wallpaper-img" style="display:none;" alt="">
+  <div id="wallpaper-scrim" style="display:none;"></div>
+
   <div class="app-shell">
     <!-- Nav bar -->
     <div class="nav-bar">
@@ -85,4 +94,3 @@
   <script src="js/app.js"></script>
 </body>
 </html>
- 

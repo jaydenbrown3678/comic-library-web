@@ -1275,28 +1275,35 @@ function applyAppearance() {
 // has-wallpaper class, see CSS) sits between the photo and the
 // content so text and cards stay readable regardless of what's in
 // the wallpaper image.
+// Rewritten to be as simple and direct as possible: a plain <img>
+// tag's src attribute, and a separate scrim <div>'s visibility —
+// nothing more exotic than that. The earlier version combined a CSS
+// custom property, a multi-layer background-image, and a
+// pseudo-element, any one of which could behave inconsistently
+// across browsers; a plain <img> is about as basic and universally
+// predictable as web content gets.
 function applyWallpaper() {
-  const shell = document.querySelector(".app-shell");
-  if (!shell) return;
+  const img = document.getElementById("wallpaper-img");
+  const scrim = document.getElementById("wallpaper-scrim");
+  if (!img || !scrim) return;
+
   const selected = WallpaperStore.get();
   const slot = selected.startsWith("wallpaper:") ? selected.split(":")[1] : null;
 
   if (slot) {
-    // Set as a custom property, not a direct background-image, so
-    // the CSS pseudo-element handling the actual rendering (see
-    // .has-wallpaper::before) can layer a readability scrim between
-    // the photo and the existing card/text styling on top — a
-    // background-image set directly here couldn't be combined that
-    // way with a pseudo-element from pure CSS. Fails silently (no
-    // visible error, just falls back to the plain background color)
-    // if this guessed path doesn't actually exist yet — acceptable,
-    // graceful degradation for a wallpaper that's been selected but
-    // not yet exported.
-    shell.style.setProperty("--wallpaper-url", `url("${wallpaperDisplayURL(slot)}")`);
-    shell.classList.add("has-wallpaper");
+    const url = wallpaperDisplayURL(slot);
+    // Only swap the src if it's actually changed — resetting the
+    // same URL can cause an unnecessary reload/flicker in some
+    // browsers.
+    if (img.getAttribute("src") !== url) {
+      img.src = url;
+    }
+    img.style.display = "block";
+    scrim.style.display = "block";
   } else {
-    shell.style.removeProperty("--wallpaper-url");
-    shell.classList.remove("has-wallpaper");
+    img.style.display = "none";
+    img.removeAttribute("src");
+    scrim.style.display = "none";
   }
 }
 
