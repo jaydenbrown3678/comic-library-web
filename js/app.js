@@ -7,6 +7,23 @@
 // ==========================================================
 
 let ALL_COMICS = [];
+
+// ---------- What's New popup ----------
+// Bump APP_VERSION and update CHANGELOG_ITEMS whenever a new set of
+// changes is deployed — the popup below compares this against what
+// the person last saw (stored in localStorage) and shows itself
+// exactly once per version, automatically, with no other tracking
+// needed. Just edit these two things each time; nothing else to
+// wire up.
+const APP_VERSION = "2026-08-25.1";
+const CHANGELOG_ITEMS = [
+  "Added wallpaper backgrounds — pick one in Settings",
+  "Fixed transparent PNGs turning black when uploaded",
+  "Fixed wallpaper going stale after other uploads",
+  "Finishing a comic now correctly moves it to History",
+  "Added a way to remove items from History",
+  "Pages can now be uploaded in batches (e.g. 30 at a time) instead of all at once",
+];
 let currentReaderComic = null;
 let currentReaderPage = 0;
 
@@ -641,6 +658,42 @@ function showInfoCard(comic) {
 
 function hideInfoCard() {
   document.getElementById("info-backdrop").classList.remove("visible");
+}
+
+// ---------- What's New popup ----------
+
+const UPDATE_SEEN_KEY = "comicLibrary.lastSeenVersion";
+
+// Shown once per version bump (see APP_VERSION/CHANGELOG_ITEMS at
+// the top of this file) — compares against whatever version was
+// last recorded as seen, and does nothing at all if they match, so
+// this is silent and invisible on every ordinary visit in between
+// updates.
+function showUpdatePopupIfNeeded() {
+  if (localStorage.getItem(UPDATE_SEEN_KEY) === APP_VERSION) return;
+
+  const backdrop = document.getElementById("info-backdrop");
+  backdrop.innerHTML = `
+    <div class="info-card">
+      <div class="info-card-header">
+        <div class="info-card-title">What's New</div>
+        <button class="icon-button pressable" id="update-popup-close" style="width:26px;height:26px;color:var(--text-secondary)">${ICONS.close}</button>
+      </div>
+      <div class="info-card-rule"></div>
+      <ul class="update-popup-list">
+        ${CHANGELOG_ITEMS.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}
+      </ul>
+    </div>`;
+  backdrop.classList.add("visible");
+
+  function dismiss() {
+    localStorage.setItem(UPDATE_SEEN_KEY, APP_VERSION);
+    backdrop.classList.remove("visible");
+  }
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) dismiss();
+  });
+  document.getElementById("update-popup-close").addEventListener("click", dismiss);
 }
 
 // ---------- Settings sheet ----------
@@ -1381,6 +1434,10 @@ async function init() {
   window.addEventListener("hashchange", handleRoute);
   handleRoute();
   playLaunchAnimation();
+  // Timed to appear right after the launch splash fully clears
+  // (see playLaunchAnimation: 1700ms display + 400ms fade), rather
+  // than popping up underneath it or interrupting the animation.
+  setTimeout(showUpdatePopupIfNeeded, 2100);
 }
 
 init();
