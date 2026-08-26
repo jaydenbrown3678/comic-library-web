@@ -87,6 +87,17 @@ const ProgressStore = {
     this._upsert(comicID, { isCompleted: true, completedAt: Date.now() });
   },
 
+  // Un-marks a comic as completed, removing it from History. Doesn't
+  // touch lastPageIndex — since that's still sitting at the final
+  // page, the comic won't reappear in Continue Reading either
+  // (matching continueReadingItems' own "at the last page = finished"
+  // cutoff); it just stops showing anywhere; reading it again from
+  // the reader will naturally re-mark it completed once it reaches
+  // the last page again.
+  removeFromHistory(comicID) {
+    this._upsert(comicID, { isCompleted: false, completedAt: null });
+  },
+
   completedComicIDs() {
     const all = this._readAll();
     return Object.entries(all)

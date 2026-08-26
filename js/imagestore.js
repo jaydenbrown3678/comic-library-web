@@ -174,6 +174,14 @@ async function loadAllImageURLs() {
   for (const [key, blob] of entries) {
     IMAGE_URLS.set(key, URL.createObjectURL(blob));
   }
+  // The wallpaper background holds onto a specific blob URL string
+  // via a CSS custom property — since every URL above was just
+  // revoked and replaced with a fresh one, that previously-applied
+  // background is now silently pointing at a dead URL unless it's
+  // explicitly refreshed here too. Guarded since applyWallpaper is
+  // defined later, in app.js — this runs fine after both files have
+  // loaded, but would fail if somehow called before that.
+  if (typeof applyWallpaper === "function") applyWallpaper();
 }
 
 function coverImageURL(comicId) {

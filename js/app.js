@@ -212,6 +212,20 @@ function renderContinueReadingCell(item) {
     </div>`;
 }
 
+function renderHistoryCell(comic) {
+  return `
+    <div class="cover-cell">
+      <a href="#/comic/${comic.id}" class="cover-art-wrap pressable" data-comic-id="${comic.id}">
+        ${coverArtHTML(comic)}
+        <div class="cover-outline"></div>
+      </a>
+      <div class="cover-title">${escapeHTML(comic.title)}</div>
+      <div class="cover-actions">
+        <button class="pressable" data-action="remove-history" data-id="${comic.id}" style="color:var(--highlight)" aria-label="Remove from History">${ICONS.xCircle}</button>
+      </div>
+    </div>`;
+}
+
 // ---------- Screens ----------
 
 function renderLibrary() {
@@ -364,6 +378,12 @@ function openReader(comicId) {
   const totalPages = effectivePageCount(comic);
   const saved = ProgressStore.lastPageIndex(comicId);
   currentReaderPage = saved != null ? Math.min(saved, totalPages - 1) : 0;
+  // Covers reopening a comic that was already left on its last page
+  // in a previous session — this path never goes through goToPage(),
+  // so it needs the same completion check applied here too.
+  if (currentReaderPage === totalPages - 1) {
+    ProgressStore.markCompleted(comicId);
+  }
 
   const pages = Array.from({ length: totalPages }, (_, i) => i);
   const resolvedPageImages = resolvePageImages(comic);
@@ -446,6 +466,15 @@ function openReader(comicId) {
 
     currentReaderPage = newPage;
     ProgressStore.updateLastPage(comicId, newPage);
+    // Reaching the last page is exactly the threshold that already
+    // removes a comic from Continue Reading (see continueReadingItems)
+    // — without this, that removal happened but nothing ever actually
+    // marked it completed, so it silently vanished from Continue
+    // Reading without ever appearing in History either, unless the
+    // checkmark button was tapped by hand.
+    if (newPage === totalPages - 1) {
+      ProgressStore.markCompleted(comicId);
+    }
     document.getElementById("reader-counter").textContent = `PAGE ${newPage + 1} OF ${totalPages}`;
     pagingController.goToPage(newPage, true);
     updateArrowStates();
@@ -1134,7 +1163,7 @@ async function exportAsZip() {
 function openHistory() {
   const comics = historyComics();
   const body = comics.length
-    ? `<div class="grid-view">${comics.map((c) => renderCoverCell(c, { accentVar: "var(--accent)" })).join("")}</div>`
+    ? `<div class="grid-view">${comics.map(renderHistoryCell).join("")}</div>`
     : emptyStateHTML(ICONS.clock, "No History Yet", "Comics you finish reading will show up here.");
   document.getElementById("history-sheet").innerHTML = `
     <div class="sheet-header">
@@ -1149,6 +1178,13 @@ function openHistory() {
       e.preventDefault();
       closeHistory();
       window.location.hash = `#/comic/${el.dataset.comicId}`;
+    });
+  });
+  document.querySelectorAll('#history-sheet [data-action="remove-history"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      ProgressStore.removeFromHistory(btn.dataset.id);
+      openHistory(); // re-render so the removed item disappears immediately
     });
   });
   showSheet("history");
@@ -1346,7 +1382,5 @@ async function init() {
   handleRoute();
   playLaunchAnimation();
 }
-
-init();
 
 init();
