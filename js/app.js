@@ -448,15 +448,39 @@ function openReader(comicId) {
   // page in the whole comic up front). Already-loaded pages are
   // left alone — this only ever adds src, never removes it, so nothing
   // has to reload as you move back and forth within the same area.
+  // How many pages ahead/behind the current one stay loaded at once.
+  // Kept deliberately small and constant regardless of the comic's
+  // total length — the earlier version only ever ADDED images to
+  // memory as you paged forward and never freed any of them, so a
+  // long comic (hundreds of pages) would accumulate hundreds of
+  // fully-decoded images simultaneously the further you read,
+  // eventually exhausting available memory and crashing — especially
+  // on mobile Safari's tighter per-tab memory budget. This keeps
+  // memory usage bounded and constant however far into the comic you
+  // are, whether it's 10 pages or 1000.
+  const LOAD_WINDOW = 1;
+
   function loadNearbyPageImages(centerPage) {
     const pageEls = stage.querySelectorAll(".reader-page");
-    for (let i = Math.max(0, centerPage - 1); i <= Math.min(pages.length - 1, centerPage + 1); i++) {
-      const img = pageEls[i]?.querySelector(".reader-page-img[data-src]");
-      if (img) {
-        img.src = img.dataset.src;
-        img.removeAttribute("data-src");
+    pageEls.forEach((pageEl, i) => {
+      const img = pageEl.querySelector(".reader-page-img");
+      if (!img) return;
+      const withinWindow = i >= centerPage - LOAD_WINDOW && i <= centerPage + LOAD_WINDOW;
+
+      if (withinWindow) {
+        if (img.dataset.src) {
+          img.src = img.dataset.src;
+          img.removeAttribute("data-src");
+        }
+      } else if (img.getAttribute("src") && !img.dataset.src) {
+        // Actually frees the decoded image from memory (not just
+        // hides it) — moving the URL back into data-src first means
+        // loadNearbyPageImages can transparently reload it later if
+        // you page back here, exactly like it was never unloaded.
+        img.dataset.src = img.getAttribute("src");
+        img.removeAttribute("src");
       }
-    }
+    });
   }
 
   const stage = document.getElementById("reader-stage");
